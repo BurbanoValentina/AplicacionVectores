@@ -8,6 +8,11 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: Assets/Scenes/VectorField.unity
+    guid: 91603aac1947cec439f5fc265fc4d5e3
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 2712343d105859d4aa799ca80e662ef3, type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 00dd4ed4f1fd8a84481bc72f0e2f2cae, type: 2}
   m_UseUCBPForAssetBundles: 0
