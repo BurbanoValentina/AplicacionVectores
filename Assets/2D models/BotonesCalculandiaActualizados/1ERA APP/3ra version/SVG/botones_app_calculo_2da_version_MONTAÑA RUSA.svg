@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 480.97 114.53">
+  <defs>
+    <style>
+      .cls-1 {
+        letter-spacing: -.07em;
+      }
+
+      .cls-2 {
+        fill: url(#linear-gradient-2);
+      }
+
+      .cls-3 {
+        mask: url(#mask-1);
+      }
+
+      .cls-4 {
+        letter-spacing: -.1em;
+      }
+
+      .cls-5 {
+        fill: #ba8e67;
+      }
+
+      .cls-6 {
+        fill: #0e4d99;
+        opacity: .5;
+      }
+
+      .cls-7 {
+        mask: url(#mask);
+      }
+
+      .cls-8 {
+        opacity: .25;
+      }
+
+      .cls-9 {
+        letter-spacing: -.1em;
+      }
+
+      .cls-10 {
+        fill: #bf5c41;
+      }
+
+      .cls-11 {
+        mask: url(#mask-2);
+      }
+
+      .cls-12 {
+        filter: url(#luminosity-noclip-3);
+      }
+
+      .cls-13 {
+        fill: url(#linear-gradient-3);
+      }
+
+      .cls-14 {
+        letter-spacing: -.06em;
+      }
+
+      .cls-15 {
+        fill: url(#linear-gradient-4);
+      }
+
+      .cls-15, .cls-16, .cls-17 {
+        mix-blend-mode: multiply;
+      }
+
+      .cls-18 {
+        fill: #fff;
+        filter: url(#drop-shadow-2);
+        font-size: 46.09px;
+      }
+
+      .cls-18, .cls-19 {
+        font-family: TwogetherSans-Black, 'Twogether Sans';
+        font-weight: 800;
+      }
+
+      .cls-20 {
+        isolation: isolate;
+      }
+
+      .cls-21 {
+        letter-spacing: -.06em;
+      }
+
+      .cls-22 {
+        fill: #dba783;
+      }
+
+      .cls-23 {
+        letter-spacing: -.05em;
+      }
+
+      .cls-24 {
+        letter-spacing: -.07em;
+      }
+
+      .cls-25 {
+        letter-spacing: -.06em;
+      }
+
+      .cls-26 {
+        fill: url(#Degradado_sin_nombre_205);
+      }
+
+      .cls-16 {
+        fill: url(#linear-gradient);
+      }
+
+      .cls-17 {
+        fill: #939393;
+      }
+
+      .cls-19 {
+        fill: #2d2d2d;
+        font-size: 46.22px;
+      }
+
+      .cls-27 {
+        fill: #ffeab6;
+      }
+
+      .cls-28 {
+        letter-spacing: -.06em;
+      }
+
+      .cls-29 {
+        mask: url(#mask-3);
+      }
+
+      .cls-30 {
+        filter: url(#luminosity-noclip);
+      }
+    </style>
+    <filter id="luminosity-noclip" x="3.24" y="1.87" width="475.81" height="96.39" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-color="#fff" result="bg"/>
+      <feBlend in="SourceGraphic" in2="bg"/>
+    </filter>
+    <filter id="luminosity-noclip-2" x="114.24" y="-7554.43" width="354.81" height="32766" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-color="#fff" result="bg"/>
+      <feBlend in="SourceGraphic" in2="bg"/>
+    </filter>
+    <mask id="mask-1" x="114.24" y="-7554.43" width="354.81" height="32766" maskUnits="userSpaceOnUse"/>
+    <linearGradient id="linear-gradient" x1="291.65" y1="98.26" x2="291.65" y2="1.87" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000"/>
+      <stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+    <mask id="mask" x="3.24" y="1.87" width="475.81" height="96.39" maskUnits="userSpaceOnUse">
+      <g class="cls-30">
+        <g class="cls-3">
+          <path class="cls-16" d="M114.24,50.06c0-29.82,14.11-45.8,42.34-47.94,2.19-.17,136.05-.25,138.41-.25,2.05,0,128.93.06,130.85.19,28.81,1.88,43.21,17.88,43.21,48s-14.51,46.24-43.52,48.03c-1.82.11-128.6.17-130.54.17-1.79,0-135.11-.05-136.8-.14-29.3-1.66-43.95-17.68-43.95-48.05Z"/>
+        </g>
+      </g>
+    </mask>
+    <linearGradient id="linear-gradient-2" x1="241.15" y1="98.26" x2="241.15" y2="1.87" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d6c0a1"/>
+      <stop offset="1" stop-color="#ffe1bd"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-3" x1="241.29" y1="10.61" x2="241.29" y2="94.14" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00e3ff"/>
+      <stop offset="1" stop-color="#0071e9"/>
+    </linearGradient>
+    <filter id="luminosity-noclip-3" x="21.73" y="13.79" width="431.31" height="30.98" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-color="#fff" result="bg"/>
+      <feBlend in="SourceGraphic" in2="bg"/>
+    </filter>
+    <filter id="luminosity-noclip-4" x="21.73" y="-7554.43" width="312.81" height="32766" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-color="#fff" result="bg"/>
+      <feBlend in="SourceGraphic" in2="bg"/>
+    </filter>
+    <mask id="mask-3" x="21.73" y="-7554.43" width="312.81" height="32766" maskUnits="userSpaceOnUse"/>
+    <linearGradient id="linear-gradient-4" x1="178.14" y1="37.62" x2="178.14" y2="9.69" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000"/>
+      <stop offset=".74" stop-color="#fff"/>
+    </linearGradient>
+    <mask id="mask-2" x="21.73" y="13.79" width="431.31" height="30.98" maskUnits="userSpaceOnUse">
+      <g class="cls-12">
+        <g class="cls-29">
+          <path class="cls-15" d="M334.55,28.18c0,7.27-11.55,13.28-26.55,14.26-1.4.09-125.13.14-126.58.14-1.61,0-132.03-.06-133.58-.17-14.78-1.06-26.1-7.03-26.1-14.22s10.79-12.88,25.06-14.14c1.87-.17,132.65-.25,134.63-.25,1.7,0,125.66.06,127.29.19,14.66,1.11,25.84,7.05,25.84,14.21Z"/>
+        </g>
+      </g>
+    </mask>
+    <linearGradient id="Degradado_sin_nombre_205" data-name="Degradado sin nombre 205" x1="241.01" y1="39.43" x2="241.01" y2="9.38" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#05c1ff"/>
+      <stop offset=".74" stop-color="aqua"/>
+    </linearGradient>
+    <filter id="drop-shadow-2" filterUnits="userSpaceOnUse">
+      <feOffset dx="1" dy="1"/>
+      <feGaussianBlur result="blur" stdDeviation="0"/>
+      <feFlood flood-color="#e8c895" flood-opacity="1"/>
+      <feComposite in2="blur" operator="in"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g class="cls-20">
+    <g id="Capa_1" data-name="Capa 1">
+      <g>
+        <g>
+          <path class="cls-17" d="M434.83,11.36c-1.93-.12-249.81-.18-251.86-.18-2.59,0-136.66.1-139.06.29C14.64,13.81,0,30.5,0,61.55c0,.65,0,1.29.02,1.92-.01.23-.02.45-.02.68,0,31.58,15.14,48.32,45.44,50.2,1.92.12,135.49.18,137.53.18s249.82-.06,251.7-.17c30.39-1.84,45.58-18.58,45.58-50.21,0-.23,0-.46-.02-.69.01-.63.02-1.27.02-1.91,0-31.57-15.14-48.3-45.42-50.19Z"/>
+          <path class="cls-10" d="M.72,52.97C.72,19.39,149.43,2.6,183.69,2.6s297.28,16.79,297.28,50.37c0,31.63-15.2,48.37-45.58,50.21-1.88.11-249.71.17-251.7.17s-135.61-.06-137.53-.18C15.86,101.29.72,84.55.72,52.97Z"/>
+          <path class="cls-22" d="M.72,50.37C.72,19.32,15.35,2.63,44.63.29c2.39-.19,136.47-.29,139.06-.29,2.05,0,249.93.06,251.86.18,30.28,1.89,45.42,18.62,45.42,50.19s-15.06,48.21-45.17,50.18c-2.01.13-249.97.2-252.12.2-2.53,0-136.56-.09-138.9-.28C15.4,98.17.72,81.47.72,50.37Z"/>
+          <g class="cls-7">
+            <path class="cls-2" d="M3.24,50.06C3.24,20.24,17.36,4.27,45.58,2.12c2.19-.17,136.05-.25,138.41-.25,2.05,0,249.93.06,251.85.19,28.81,1.88,43.21,17.88,43.21,48s-14.51,46.24-43.52,48.03c-1.82.11-249.6.17-251.54.17-1.79,0-135.11-.05-136.8-.14-29.3-1.66-43.95-17.68-43.95-48.05Z"/>
+          </g>
+          <path class="cls-5" d="M8.77,52.65c0-28.32,146.03-42.47,174.92-42.47s289.23,14.15,289.23,42.47c0,26.45-12.61,40.55-37.82,42.3-1.78.12-249.51.18-251.41.18-2.44,0-136.37-.1-138.6-.3-24.21-2.19-36.31-16.25-36.31-42.18Z"/>
+          <path class="cls-27" d="M9.08,49.92c0-27.08,13.2-41.2,39.61-42.39,1.21-.05,134.04-.08,135.31-.08,1.69,0,249.22.05,250.81.15,25.61,1.56,38.42,15.66,38.42,42.33s-13.25,41.26-39.75,42.4c-1.17.05-248.26.08-249.47.08-1.74,0-135.01-.05-136.65-.15-25.51-1.6-38.27-15.71-38.27-42.32Z"/>
+          <path class="cls-13" d="M9.22,50.06c0-27.08,13.2-41.2,39.61-42.39,1.21-.05,134.04-.08,135.31-.08,1.69,0,249.22.05,250.81.15,25.61,1.56,38.42,15.66,38.42,42.33s-13.25,41.26-39.75,42.4c-1.17.05-248.26.08-249.47.08-1.74,0-135.01-.05-136.65-.15-25.51-1.6-38.27-15.72-38.27-42.33Z"/>
+          <path class="cls-6" d="M183.99,86.26c-1.85,0-135.23-.06-136.96-.18-24.31-1.63-36.93-14.72-37.89-39.23-.04,1-.06,2.03-.06,3.07,0,26.21,12.38,40.3,37.14,42.25,1.99.16,135.63.23,137.78.23,2.26,0,250.32-.09,252.4-.26,24.55-2.04,36.83-16.12,36.83-42.22,0-1.04-.02-2.07-.06-3.07-.95,24.37-13.43,37.44-37.44,39.2-1.87.14-249.71.21-251.72.21Z"/>
+          <g class="cls-11">
+            <path class="cls-26" d="M453.03,28.18c0,7.27,1.47,16.58-23.15,16.58-11.73,0-247-2.19-248.46-2.19-1.61,0-132.03-.06-133.58-.17-14.78-1.06-18.86-7.03-18.86-14.22s3.55-12.88,17.82-14.14c1.87-.17,132.65-.25,134.63-.25,1.7,0,244.13.19,245.76.19,21.52,0,25.84,7.05,25.84,14.21Z"/>
+          </g>
+        </g>
+        <g>
+          <g class="cls-8">
+            <text class="cls-19" transform="translate(61.01 69.93)"><tspan class="cls-25" x="0" y="0">MO</tspan><tspan class="cls-1" x="73.9" y="0">N</tspan><tspan class="cls-9" x="107.45" y="0">T</tspan><tspan class="cls-28" x="134.49" y="0">AÑ</tspan><tspan class="cls-25" x="198.87" y="0">A RUSA</tspan></text>
+          </g>
+          <text class="cls-18" transform="translate(61.01 67.33)"><tspan class="cls-21" x="0" y="0">MO</tspan><tspan class="cls-24" x="73.7" y="0">N</tspan><tspan class="cls-4" x="107.16" y="0">T</tspan><tspan class="cls-14" x="134.12" y="0">AÑ</tspan><tspan class="cls-23" x="198.32" y="0">A RUSA</tspan></text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
