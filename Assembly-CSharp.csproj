@@ -49,10 +49,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\VectorField\VectorFieldManager.cs" />
-    <Compile Include="Assets\Panel\SceneBootstrapper.cs" />
     <Compile Include="Assets\FPSCameraController.cs" />
     <Compile Include="Assets\WaterRippleShader Eldvmo\Scripts\MouseInputForRipple.cs" />
-    <Compile Include="Assets\Panel\AutoSceneInitializer.cs" />
     <Compile Include="Assets\WaterRippleShader Eldvmo\Scripts\BoatFloatControl.cs" />
     <Compile Include="Assets\Scenes\Scripts\Readme.cs" />
     <Compile Include="Assets\WaterRippleShader Eldvmo\Scripts\RaindropRipple.cs" />

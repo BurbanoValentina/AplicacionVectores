@@ -48,11 +48,9 @@
     <Analyzer Include="C:\Program Files\Unity\Hub\Editor\6000.2.3f1\Editor\Data\Tools\Unity.SourceGenerators\Unity.UIToolkit.SourceGenerator.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Editor\VectorFieldStartupSceneLoader.cs" />
     <Compile Include="Assets\Editor\ArrowPrefabGenerator.cs" />
     <Compile Include="Assets\Editor\ScenePreflightCleaner.cs" />
     <Compile Include="Assets\Scenes\Scripts\Editor\ReadmeEditor.cs" />
-    <Compile Include="Assets\Editor\VectorFieldSceneTools.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
