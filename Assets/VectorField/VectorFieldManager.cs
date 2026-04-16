@@ -27,6 +27,18 @@ namespace VectorField
         public float       fieldRadius = 30f;
         public float       arrowScale  = 12.0f;
 
+        [Header("Multiplicadores X/Y (salida del vector)")]
+        public float scaleX = 1f;
+        public float scaleY = 1f;
+
+        [Header("Zona activa")]
+        public Vector2 zoneCenter = Vector2.zero;
+
+        [Header("Isla (zona de exclusion)")]
+        public Vector2 islandCenter          = Vector2.zero;
+        public float   islandRadius          = 18f;
+        public int     islandAvoidThreshold  = 1000;
+
         [Header("Formula activa")]
         public FieldFormula formula    = FieldFormula.RadialOutward;
 
@@ -65,7 +77,12 @@ namespace VectorField
             if (arrowPrefab == null)
                 Debug.Log("[VFM] arrowPrefab no asignado. Flechas simples.");
 
-            var positions = BuildGrid2D(vectorCount, fieldRadius);
+            bool avoidIsland = vectorCount < islandAvoidThreshold;
+            var positions = BuildGrid2D(
+                vectorCount, fieldRadius, zoneCenter,
+                avoidIsland ? islandCenter : Vector2.zero,
+                avoidIsland ? islandRadius : 0f);
+
             foreach (Vector2 p in positions)
             {
                 Vector2 dir = EvaluateFormula(p);
@@ -127,6 +144,9 @@ namespace VectorField
             useTarget   = false;
             target      = Vector3.zero;
             vectorCount = 100;
+            scaleX      = 1f;
+            scaleY      = 1f;
+            zoneCenter  = Vector2.zero;
             GenerateField();
         }
 
@@ -144,22 +164,27 @@ namespace VectorField
             }
         }
 
-        static List<Vector2> BuildGrid2D(int n, float radius)
+        // inflate: genera mas candidatos para compensar los filtrados por la isla
+        static List<Vector2> BuildGrid2D(int n, float radius, Vector2 center,
+                                         Vector2 islandCenter, float islandRadius)
         {
-            int cols = Mathf.Max(1, Mathf.RoundToInt(Mathf.Sqrt(n)));
-            int rows = Mathf.Max(1, Mathf.CeilToInt((float)n / cols));
-            float halfSize = radius;
-            float stepX = cols > 1 ? (2f * halfSize) / (cols - 1) : 0f;
-            float stepZ = rows > 1 ? (2f * halfSize) / (rows - 1) : 0f;
+            float inflate = islandRadius > 0f ? 1.4f : 1.0f;
+            int   target  = Mathf.RoundToInt(n * inflate);
+            int   cols    = Mathf.Max(1, Mathf.RoundToInt(Mathf.Sqrt(target)));
+            int   rows    = Mathf.Max(1, Mathf.CeilToInt((float)target / cols));
+            float stepX   = cols > 1 ? (2f * radius) / (cols - 1) : 0f;
+            float stepZ   = rows > 1 ? (2f * radius) / (rows - 1) : 0f;
 
-            var pts = new List<Vector2>(rows * cols);
-            for (int r = 0; r < rows; r++)
-                for (int c = 0; c < cols; c++)
+            var pts = new List<Vector2>(n);
+            for (int r = 0; r < rows && pts.Count < n; r++)
+                for (int c = 0; c < cols && pts.Count < n; c++)
                 {
-                    if (pts.Count >= n) break;
-                    float x = cols > 1 ? -halfSize + c * stepX : 0f;
-                    float z = rows > 1 ? -halfSize + r * stepZ : 0f;
-                    pts.Add(new Vector2(x, z));
+                    float x  = (cols > 1 ? -radius + c * stepX : 0f) + center.x;
+                    float z  = (rows > 1 ? -radius + r * stepZ : 0f) + center.y;
+                    var   pt = new Vector2(x, z);
+                    if (islandRadius > 0f && Vector2.Distance(pt, islandCenter) < islandRadius)
+                        continue;
+                    pts.Add(pt);
                 }
             return pts;
         }
@@ -168,24 +193,27 @@ namespace VectorField
         {
             float x = p.x, y = p.y;
             float r2 = x * x + y * y;
+            Vector2 result;
 
             switch (formula)
             {
-                case FieldFormula.RadialOutward:   return new Vector2(x, y);
-                case FieldFormula.RadialInward:    return new Vector2(-x, -y);
-                case FieldFormula.RotationXY:      return new Vector2(-y, x);
+                case FieldFormula.RadialOutward:   result = new Vector2(x, y); break;
+                case FieldFormula.RadialInward:    result = new Vector2(-x, -y); break;
+                case FieldFormula.RotationXY:      result = new Vector2(-y, x); break;
                 case FieldFormula.Gravitational:
-                    return r2 < 0.01f ? Vector2.zero : new Vector2(-x, -y) / r2;
-                case FieldFormula.Saddle:          return new Vector2(x, -y);
-                case FieldFormula.Constant:        return new Vector2(1f, 0f);
+                    result = r2 < 0.01f ? Vector2.zero : new Vector2(-x, -y) / r2; break;
+                case FieldFormula.Saddle:          result = new Vector2(x, -y); break;
+                case FieldFormula.Constant:        result = new Vector2(1f, 0f); break;
                 case FieldFormula.Whirlpool:
-                    return r2 < 0.01f ? Vector2.zero : new Vector2(-y, x) / r2;
-                case FieldFormula.Spiral:          return new Vector2(x - y, x + y);
+                    result = r2 < 0.01f ? Vector2.zero : new Vector2(-y, x) / r2; break;
+                case FieldFormula.Spiral:          result = new Vector2(x - y, x + y); break;
                 case FieldFormula.TargetPoint:
                     Vector2 diff = new Vector2(target.x, target.z) - p;
-                    return diff.magnitude > 0.001f ? diff.normalized : Vector2.zero;
-                default: return new Vector2(x, y);
+                    result = diff.magnitude > 0.001f ? diff.normalized : Vector2.zero; break;
+                default: result = new Vector2(x, y); break;
             }
+
+            return new Vector2(result.x * scaleX, result.y * scaleY);
         }
 
         void PlaceArrow(Vector3 worldPos, Vector2 dir2D, int totalCount)
