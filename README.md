@@ -306,6 +306,3 @@ sequenceDiagram
 
 ---
 
-## Autor
-
-**BurbanoValentina** — Proyecto universitario de visualizacion matematica interactiva.
