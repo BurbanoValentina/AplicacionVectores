@@ -19,7 +19,10 @@ public static class ScenePreflightCleaner
     {
         if (state != PlayModeStateChange.ExitingEditMode) return;
 
+        PanelUISetup.FixPanelPrefabAll();
+        PanelUISetup.FixPanelInOpenScenes();
         RemoveMissingScriptsInOpenScenes();
+        RemoveMissingScriptsInProjectPrefabs();
         EnsureSingleAudioListenerInEditor();
     }
 
@@ -53,6 +56,65 @@ public static class ScenePreflightCleaner
             EditorSceneManager.MarkAllScenesDirty();
             Debug.Log("[Preflight] Se limpiaron componentes con scripts faltantes.");
         }
+    }
+
+    static void RemoveMissingScriptsInProjectPrefabs()
+    {
+        var prefabGuids = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" });
+        int touchedPrefabs = 0;
+        int removedTotal = 0;
+
+        foreach (var guid in prefabGuids)
+        {
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            if (string.IsNullOrEmpty(path))
+                continue;
+
+            GameObject root = null;
+            bool changed = false;
+
+            try
+            {
+                root = PrefabUtility.LoadPrefabContents(path);
+                if (root == null)
+                    continue;
+
+                int removed = GameObjectUtility.RemoveMonoBehavioursWithMissingScript(root);
+                if (removed > 0)
+                {
+                    changed = true;
+                    removedTotal += removed;
+                }
+
+                var transforms = root.GetComponentsInChildren<Transform>(true);
+                foreach (var tr in transforms)
+                {
+                    if (tr == null)
+                        continue;
+
+                    removed = GameObjectUtility.RemoveMonoBehavioursWithMissingScript(tr.gameObject);
+                    if (removed > 0)
+                    {
+                        changed = true;
+                        removedTotal += removed;
+                    }
+                }
+
+                if (changed)
+                {
+                    PrefabUtility.SaveAsPrefabAsset(root, path);
+                    touchedPrefabs++;
+                }
+            }
+            finally
+            {
+                if (root != null)
+                    PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        if (touchedPrefabs > 0)
+            Debug.Log($"[Preflight] Se limpiaron scripts faltantes en {touchedPrefabs} prefab(s), componentes removidos: {removedTotal}.");
     }
 
     static void EnsureSingleAudioListenerInEditor()

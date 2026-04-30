@@ -97914,57 +97914,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 3181484011231255767, guid: 158847a09610acb4b8d69146d0fd088b, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2018354473}
-    - targetCorrespondingSourceObject: {fileID: 3181484011231255767, guid: 158847a09610acb4b8d69146d0fd088b, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2018354474}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 158847a09610acb4b8d69146d0fd088b, type: 3}
 --- !u!1 &2018354472 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3181484011231255767, guid: 158847a09610acb4b8d69146d0fd088b, type: 3}
   m_PrefabInstance: {fileID: 2018354471}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &2018354473
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2018354472}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: afe3cda3e244f60419474164d6ba3b0b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.UI.TrackedDeviceRaycaster
-  m_IgnoreReversedGraphics: 0
-  m_CheckFor2DOcclusion: 0
-  m_CheckFor3DOcclusion: 0
-  m_MaxDistance: 1000
-  m_BlockingMask:
-    serializedVersion: 2
-    m_Bits: 0
---- !u!114 &2018354474
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2018354472}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7951c64acb0fa62458bf30a60089fe2d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster
-  m_IgnoreReversedGraphics: 0
-  m_CheckFor2DOcclusion: 0
-  m_CheckFor3DOcclusion: 0
-  m_BlockingMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_RaycastTriggerInteraction: 1
 --- !u!4 &2020864517 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 627828213012876515, guid: b36aa8866ff42fa41b42da9b29c835bb, type: 3}

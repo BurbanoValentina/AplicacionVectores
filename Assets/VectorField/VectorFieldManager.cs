@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace VectorField
 {
@@ -39,6 +40,22 @@ namespace VectorField
         public float   islandRadius          = 18f;
         public int     islandAvoidThreshold  = 1000;
 
+        [Header("Filtro agua vs isla")]
+        public float waterSurfaceY = -5f;
+        public float landHeightThreshold = 0.35f;
+        public float islandExclusionPadding = 3f;
+        public bool  avoidUnderIslandWater = true;
+        public bool  usePhysicsLandFilter = false;
+        public bool  sampleAcrossEntireOcean = true;
+        public bool  autoDetectOceanBounds = true;
+        public string oceanNameHint = "Ocean";
+        public bool  excludeSolidObjectsOverWater = true;
+        public bool  allowUnderBoats = true;
+
+        [Header("Deteccion automatica de isla")]
+        public bool autoDetectIslandFromScene = true;
+        public string islandRootNameHint = "LandMass";
+
         [Header("Formula activa")]
         public FieldFormula formula    = FieldFormula.RadialOutward;
 
@@ -55,6 +72,8 @@ namespace VectorField
 
         // true si el prefab apunta en +Y (FlechaApp3 con Cone/Cylinder ProBuilder)
         bool _prefabPointsUpY = false;
+        bool _hasOceanBounds = false;
+        Bounds _oceanBounds;
 
         struct ArrowAnimData
         {
@@ -73,22 +92,114 @@ namespace VectorField
         {
             ClearArrows();
             DetectPrefabOrientation();
+            RefreshIslandBoundsFromScene();
+            RefreshOceanBoundsFromScene();
 
             if (arrowPrefab == null)
                 Debug.Log("[VFM] arrowPrefab no asignado. Flechas simples.");
 
-            bool avoidIsland = vectorCount < islandAvoidThreshold;
-            var positions = BuildGrid2D(
-                vectorCount, fieldRadius, zoneCenter,
-                avoidIsland ? islandCenter : Vector2.zero,
-                avoidIsland ? islandRadius : 0f);
+            bool avoidIsland = islandRadius > 0.01f;
+            float exclusionRadius = avoidIsland ? islandRadius + islandExclusionPadding : 0f;
+
+            List<Vector2> positions;
+            if (sampleAcrossEntireOcean && _hasOceanBounds)
+            {
+                positions = BuildDistributedOceanPoints(vectorCount, _oceanBounds, islandCenter, exclusionRadius);
+            }
+            else
+            {
+                positions = BuildGrid2D(vectorCount, fieldRadius, zoneCenter, islandCenter, exclusionRadius);
+            }
 
             foreach (Vector2 p in positions)
             {
-                Vector2 dir = EvaluateFormula(p);
-                Vector3 worldPos = new Vector3(p.x, 0.15f, p.y);
+                Vector2 dir = EvaluateFormula(p, zoneCenter);
+                Vector3 worldPos = new Vector3(p.x, waterSurfaceY + 0.15f, p.y);
                 PlaceArrow(worldPos, dir, positions.Count);
             }
+        }
+
+        void RefreshOceanBoundsFromScene()
+        {
+            _hasOceanBounds = false;
+            if (!autoDetectOceanBounds)
+                return;
+
+            if (!TryDetectOceanBounds(out var b))
+                return;
+
+            _oceanBounds = b;
+            _hasOceanBounds = true;
+        }
+
+        bool TryDetectOceanBounds(out Bounds bounds)
+        {
+            bounds = default;
+
+            var scene = SceneManager.GetActiveScene();
+            if (!scene.IsValid() || !scene.isLoaded)
+                return false;
+
+            var roots = scene.GetRootGameObjects();
+            if (roots == null || roots.Length == 0)
+                return false;
+
+            bool found = false;
+            float bestArea = -1f;
+
+            for (int i = 0; i < roots.Length; i++)
+            {
+                var root = roots[i];
+                if (root == null)
+                    continue;
+
+                var transforms = root.GetComponentsInChildren<Transform>(true);
+                for (int j = 0; j < transforms.Length; j++)
+                {
+                    var tr = transforms[j];
+                    if (tr == null)
+                        continue;
+
+                    if (!tr.name.Contains(oceanNameHint, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var renderers = tr.GetComponentsInChildren<Renderer>(true);
+                    for (int k = 0; k < renderers.Length; k++)
+                    {
+                        var r = renderers[k];
+                        if (r == null)
+                            continue;
+
+                        var b = r.bounds;
+                        float area = b.size.x * b.size.z;
+                        if (area > bestArea)
+                        {
+                            bestArea = area;
+                            bounds = b;
+                            found = true;
+                        }
+                    }
+
+                    var colliders = tr.GetComponentsInChildren<Collider>(true);
+                    for (int k = 0; k < colliders.Length; k++)
+                    {
+                        var c = colliders[k];
+                        if (c == null)
+                            continue;
+
+                        var b = c.bounds;
+                        float area = b.size.x * b.size.z;
+                        if (area > bestArea)
+                        {
+                            bestArea = area;
+                            bounds = b;
+                            found = true;
+                        }
+                    }
+                }
+            }
+
+            return found && bestArea > 1f;
         }
 
         /// <summary>
@@ -165,10 +276,13 @@ namespace VectorField
         }
 
         // inflate: genera mas candidatos para compensar los filtrados por la isla
-        static List<Vector2> BuildGrid2D(int n, float radius, Vector2 center,
-                                         Vector2 islandCenter, float islandRadius)
+        List<Vector2> BuildGrid2D(int n, float radius, Vector2 center,
+                                  Vector2 islandCenter, float islandRadius)
         {
-            float inflate = islandRadius > 0f ? 1.4f : 1.0f;
+            float inflate = islandRadius > 0f ? 1.9f : 1.0f;
+            if (avoidUnderIslandWater)
+                inflate = Mathf.Max(inflate, 2.5f);
+
             int   target  = Mathf.RoundToInt(n * inflate);
             int   cols    = Mathf.Max(1, Mathf.RoundToInt(Mathf.Sqrt(target)));
             int   rows    = Mathf.Max(1, Mathf.CeilToInt((float)target / cols));
@@ -184,14 +298,272 @@ namespace VectorField
                     var   pt = new Vector2(x, z);
                     if (islandRadius > 0f && Vector2.Distance(pt, islandCenter) < islandRadius)
                         continue;
+                    if (avoidUnderIslandWater && IsPointUnderIsland(pt))
+                        continue;
+                    if (!IsPointValidForSpawn(pt))
+                        continue;
                     pts.Add(pt);
                 }
+
+            // Si el filtrado por isla/terreno deja pocos puntos, completar por muestreo aleatorio.
+            int safety = 0;
+            int maxAttempts = Mathf.Max(n * 40, 4000);
+            while (pts.Count < n && safety < maxAttempts)
+            {
+                safety++;
+                float x = UnityEngine.Random.Range(-radius, radius) + center.x;
+                float z = UnityEngine.Random.Range(-radius, radius) + center.y;
+                var pt = new Vector2(x, z);
+
+                if (islandRadius > 0f && Vector2.Distance(pt, islandCenter) < islandRadius)
+                    continue;
+                if (avoidUnderIslandWater && IsPointUnderIsland(pt))
+                    continue;
+                if (!IsPointValidForSpawn(pt))
+                    continue;
+
+                pts.Add(pt);
+            }
+
             return pts;
         }
 
-        Vector2 EvaluateFormula(Vector2 p)
+        List<Vector2> BuildDistributedOceanPoints(int n, Bounds oceanBounds, Vector2 islandCenter, float islandRadius)
         {
-            float x = p.x, y = p.y;
+            float minX = oceanBounds.min.x;
+            float maxX = oceanBounds.max.x;
+            float minZ = oceanBounds.min.z;
+            float maxZ = oceanBounds.max.z;
+
+            float width = Mathf.Max(1f, maxX - minX);
+            float depth = Mathf.Max(1f, maxZ - minZ);
+            float aspect = width / depth;
+
+            int cols = Mathf.Max(1, Mathf.RoundToInt(Mathf.Sqrt(n * aspect)));
+            int rows = Mathf.Max(1, Mathf.CeilToInt((float)n / cols));
+
+            float stepX = width / cols;
+            float stepZ = depth / rows;
+            float jitterX = stepX * 0.35f;
+            float jitterZ = stepZ * 0.35f;
+
+            var pts = new List<Vector2>(n);
+            for (int r = 0; r < rows && pts.Count < n; r++)
+            {
+                for (int c = 0; c < cols && pts.Count < n; c++)
+                {
+                    float baseX = minX + (c + 0.5f) * stepX;
+                    float baseZ = minZ + (r + 0.5f) * stepZ;
+
+                    float x = baseX + UnityEngine.Random.Range(-jitterX, jitterX);
+                    float z = baseZ + UnityEngine.Random.Range(-jitterZ, jitterZ);
+                    var pt = new Vector2(Mathf.Clamp(x, minX, maxX), Mathf.Clamp(z, minZ, maxZ));
+
+                    if (islandRadius > 0f && Vector2.Distance(pt, islandCenter) < islandRadius)
+                        continue;
+                    if (avoidUnderIslandWater && IsPointUnderIsland(pt))
+                        continue;
+                    if (!IsPointValidForSpawn(pt))
+                        continue;
+
+                    pts.Add(pt);
+                }
+            }
+
+            int attempts = 0;
+            int maxAttempts = Mathf.Max(6000, n * 30);
+            while (pts.Count < n && attempts < maxAttempts)
+            {
+                attempts++;
+                float x = UnityEngine.Random.Range(minX, maxX);
+                float z = UnityEngine.Random.Range(minZ, maxZ);
+                var pt = new Vector2(x, z);
+
+                if (islandRadius > 0f && Vector2.Distance(pt, islandCenter) < islandRadius)
+                    continue;
+                if (avoidUnderIslandWater && IsPointUnderIsland(pt))
+                    continue;
+                if (!IsPointValidForSpawn(pt))
+                    continue;
+
+                pts.Add(pt);
+            }
+
+            return pts;
+        }
+
+        bool IsPointValidForSpawn(Vector2 p)
+        {
+            if (!excludeSolidObjectsOverWater)
+                return true;
+
+            var origin = new Vector3(p.x, waterSurfaceY + 200f, p.y);
+            var hits = Physics.RaycastAll(origin, Vector3.down, 500f, ~0, QueryTriggerInteraction.Ignore);
+            if (hits == null || hits.Length == 0)
+                return true;
+
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+            for (int i = 0; i < hits.Length; i++)
+            {
+                var h = hits[i];
+                var go = h.collider != null ? h.collider.gameObject : null;
+                if (go == null)
+                    continue;
+
+                string n = go.name.ToLowerInvariant();
+                if (IsWaterLikeObjectName(n))
+                    return true;
+
+                if (allowUnderBoats && IsBoatLikeObjectName(n))
+                    continue;
+
+                return false;
+            }
+
+            return true;
+        }
+
+        bool IsPointUnderIsland(Vector2 p)
+        {
+            // Filtro estable: exclusion radial ampliada alrededor de la isla.
+            float exclusionRadius = Mathf.Max(0f, islandRadius + islandExclusionPadding);
+            if (exclusionRadius > 0.01f && Vector2.Distance(p, islandCenter) < exclusionRadius)
+                return true;
+
+            if (!usePhysicsLandFilter)
+                return false;
+
+            const float rayStartY = 500f;
+            const float rayDistance = 1200f;
+
+            var origin = new Vector3(p.x, rayStartY, p.y);
+            if (!Physics.Raycast(origin, Vector3.down, out var hit, rayDistance, ~0, QueryTriggerInteraction.Ignore))
+                return false;
+
+            return hit.point.y > (waterSurfaceY + landHeightThreshold);
+        }
+
+        void RefreshIslandBoundsFromScene()
+        {
+            if (!autoDetectIslandFromScene)
+                return;
+
+            if (!TryDetectIslandBounds(out Vector2 detectedCenter, out float detectedRadius))
+                return;
+
+            islandCenter = detectedCenter;
+            islandRadius = detectedRadius;
+        }
+
+        bool TryDetectIslandBounds(out Vector2 center, out float radius)
+        {
+            center = islandCenter;
+            radius = islandRadius;
+
+            var scene = SceneManager.GetActiveScene();
+            if (!scene.IsValid() || !scene.isLoaded)
+                return false;
+
+            var roots = scene.GetRootGameObjects();
+            if (roots == null || roots.Length == 0)
+                return false;
+
+            bool found = false;
+            Bounds bounds = new Bounds();
+
+            for (int i = 0; i < roots.Length; i++)
+            {
+                var root = roots[i];
+                if (root == null)
+                    continue;
+
+                var candidates = root.GetComponentsInChildren<Transform>(true);
+                for (int j = 0; j < candidates.Length; j++)
+                {
+                    var tr = candidates[j];
+                    if (tr == null)
+                        continue;
+
+                    if (!tr.name.Contains(islandRootNameHint, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var renderers = tr.GetComponentsInChildren<Renderer>(true);
+                    for (int k = 0; k < renderers.Length; k++)
+                    {
+                        var r = renderers[k];
+                        if (r == null)
+                            continue;
+
+                        if (IsWaterLikeObjectName(r.gameObject.name) || r.bounds.max.y <= (waterSurfaceY + landHeightThreshold))
+                            continue;
+
+                        if (!found)
+                        {
+                            bounds = r.bounds;
+                            found = true;
+                        }
+                        else
+                        {
+                            bounds.Encapsulate(r.bounds);
+                        }
+                    }
+
+                    var colliders = tr.GetComponentsInChildren<Collider>(true);
+                    for (int k = 0; k < colliders.Length; k++)
+                    {
+                        var c = colliders[k];
+                        if (c == null)
+                            continue;
+
+                        if (IsWaterLikeObjectName(c.gameObject.name) || c.bounds.max.y <= (waterSurfaceY + landHeightThreshold))
+                            continue;
+
+                        if (!found)
+                        {
+                            bounds = c.bounds;
+                            found = true;
+                        }
+                        else
+                        {
+                            bounds.Encapsulate(c.bounds);
+                        }
+                    }
+                }
+            }
+
+            if (!found)
+                return false;
+
+            center = new Vector2(bounds.center.x, bounds.center.z);
+            radius = Mathf.Max(bounds.extents.x, bounds.extents.z);
+            return radius > 0.01f;
+        }
+
+        static bool IsWaterLikeObjectName(string objectName)
+        {
+            if (string.IsNullOrEmpty(objectName))
+                return false;
+
+            string n = objectName.ToLowerInvariant();
+            return n.Contains("ocean") || n.Contains("water") || n.Contains("river") || n.Contains("sea");
+        }
+
+        static bool IsBoatLikeObjectName(string objectName)
+        {
+            if (string.IsNullOrEmpty(objectName))
+                return false;
+
+            string n = objectName.ToLowerInvariant();
+            return n.Contains("boat") || n.Contains("ship");
+        }
+
+        Vector2 EvaluateFormula(Vector2 p, Vector2 localOrigin)
+        {
+            // Las formulas se calculan respecto al centro de la zona activa,
+            // para que cada zona se comporte de forma coherente.
+            Vector2 local = p - localOrigin;
+            float x = local.x, y = local.y;
             float r2 = x * x + y * y;
             Vector2 result;
 
@@ -299,7 +671,7 @@ namespace VectorField
             body.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             body.transform.localPosition = new Vector3(0f, 0f, 0.40f);
             body.transform.localScale    = new Vector3(0.18f, 0.40f, 0.18f);
-            var bc = body.GetComponent<Collider>(); if (bc) DestroyImmediate(bc);
+            var bc = body.GetComponent<Collider>(); if (bc) Destroy(bc);
             body.GetComponent<Renderer>().sharedMaterial = GetBodyMat();
 
             // Punta: cono procedural apuntando en +Z
@@ -395,8 +767,6 @@ namespace VectorField
             foreach (var a in _arrows) if (a != null) Destroy(a);
             _arrows.Clear();
             _animData.Clear();
-            for (int i = transform.childCount - 1; i >= 0; i--)
-                Destroy(transform.GetChild(i).gameObject);
             // Limpiar cache de materiales/mesh estaticos al salir de Play
             _matBody  = null;
             _matTip   = null;
