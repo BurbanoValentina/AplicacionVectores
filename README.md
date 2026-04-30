@@ -1,3 +1,22 @@
+## Cambios por revisar
+
+### Movimiento del barco
+
+| Archivo | Ubicacion | Descripcion |
+|---------|-----------|-------------|
+| `BoatControl.cs` | `Assets/WaterRippleShader Eldvmo/Scripts/BoatControl.cs` | Movimiento del barco con teclado (W/S avanzar, A/D girar), velocidad, velocidad de rotacion e inclinacion visual (roll/pitch) al moverse |
+| `BoatFloatControl.cs` | `Assets/WaterRippleShader Eldvmo/Scripts/BoatFloatControl.cs` | Flotacion del barco sobre el agua usando raycasts al plano de agua y efecto de ondas (ripple) |
+
+### Cambios en el panel de control
+
+| Archivo | Ubicacion | Descripcion |
+|---------|-----------|-------------|
+| `PanelController.cs` | `Assets/Panel/PanelController.cs` | Se eliminaron las zonas: Agua Norte/Sur/Este/Oeste y Cuadrantes NE/NO/SE/SO. Solo quedan las 6 zonas de Atras y Todo el oceano |
+| `PanelController.cs` | `Assets/Panel/PanelController.cs` | Se elimino el texto de estado del panel (statusLabel y descripcion) para que el titulo CAMPO VECTORIAL aparezca en la parte superior |
+| `PanelUISetup.cs` | `Assets/Editor/PanelUISetup.cs` | Se ocultan el statusLabel y el descriptionLabel en el layout del prefab |
+
+---
+
 # Aplicacion Vectores
 
 Aplicacion interactiva de **visualizacion de campos vectoriales** en 3D desarrollada en Unity con soporte para **Realidad Virtual (XR)** y modo escritorio FPS.

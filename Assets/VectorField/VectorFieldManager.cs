@@ -25,8 +25,31 @@ namespace VectorField
 
         [Header("Configuracion del campo")]
         public int         vectorCount = 300;
-        public float       fieldRadius = 30f;
-        public float       arrowScale  = 12.0f;
+        public float       fieldRadius = 20f;
+        public float       arrowScale  = 1f;
+
+        [Header("Forzado para demo")]
+        public bool forceAtLeastNVectors = true;
+        public int  forcedMinimumVectorCount = 2000;
+        public bool onlyBackOfIsland = true;
+        public float backEndOffset = 8f;
+
+        [Header("Sectores atras (soloBack)")]
+        public bool useBackSectors = true;
+        [Min(1)] public int backSectors = 1;
+        [Min(0)] public int backSectorIndex = 0;
+        [Range(0.01f, 0.5f)] public float backSectorShrinkAt2000 = 0.15f;
+        [Range(0f, 0.45f)] public float spawnJitterFactor = 0.02f;
+        public bool useBackPackedRectangle = true;
+        public float packedRectHorizontalPadding = 0f;
+        public float packedRectBackPadding = 0f;
+        public float packedRectFrontPadding = 0f;
+        // Nota: para el escalado por cantidad, interpretamos:
+        // - absoluteMaxArrowScale = escala cuando hay pocos vectores (100 aprox)
+        // - absoluteMinArrowScale = escala cuando hay ~1000 vectores
+        // y para 2000 se reduce aun mas (absoluteMinArrowScale * backSectorShrinkAt2000)
+        public float absoluteMinArrowScale = 0.5f;
+        public float absoluteMaxArrowScale = 1.0f;
 
         [Header("Multiplicadores X/Y (salida del vector)")]
         public float scaleX = 1f;
@@ -41,16 +64,22 @@ namespace VectorField
         public int     islandAvoidThreshold  = 1000;
 
         [Header("Filtro agua vs isla")]
-        public float waterSurfaceY = -5f;
+        public float waterSurfaceY = 15f;
         public float landHeightThreshold = 0.35f;
-        public float islandExclusionPadding = 3f;
+        public float islandExclusionPadding = 25f;
         public bool  avoidUnderIslandWater = true;
         public bool  usePhysicsLandFilter = false;
         public bool  sampleAcrossEntireOcean = true;
         public bool  autoDetectOceanBounds = true;
         public string oceanNameHint = "Ocean";
+        public float oceanSideInset = 0f;
+        public float oceanFrontBackInset = 0f;
         public bool  excludeSolidObjectsOverWater = true;
         public bool  allowUnderBoats = true;
+
+        [Header("Color temporal del campo")]
+        public bool forceFieldColor = false;
+        public Color forcedFieldColor = Color.black;
 
         [Header("Deteccion automatica de isla")]
         public bool autoDetectIslandFromScene = true;
@@ -95,6 +124,10 @@ namespace VectorField
             RefreshIslandBoundsFromScene();
             RefreshOceanBoundsFromScene();
 
+            int desiredCount = forceAtLeastNVectors
+                ? Mathf.Max(vectorCount, forcedMinimumVectorCount)
+                : vectorCount;
+
             if (arrowPrefab == null)
                 Debug.Log("[VFM] arrowPrefab no asignado. Flechas simples.");
 
@@ -104,18 +137,20 @@ namespace VectorField
             List<Vector2> positions;
             if (sampleAcrossEntireOcean && _hasOceanBounds)
             {
-                positions = BuildDistributedOceanPoints(vectorCount, _oceanBounds, islandCenter, exclusionRadius);
+                positions = BuildDistributedOceanPoints(desiredCount, _oceanBounds, islandCenter, exclusionRadius);
             }
             else
             {
-                positions = BuildGrid2D(vectorCount, fieldRadius, zoneCenter, islandCenter, exclusionRadius);
+                positions = BuildGrid2D(desiredCount, fieldRadius, zoneCenter, islandCenter, exclusionRadius);
             }
 
             foreach (Vector2 p in positions)
             {
                 Vector2 dir = EvaluateFormula(p, zoneCenter);
                 Vector3 worldPos = new Vector3(p.x, waterSurfaceY + 0.15f, p.y);
-                PlaceArrow(worldPos, dir, positions.Count);
+                // Usar el conteo deseado (input del panel) para el escalado por cantidad,
+                // aunque por filtros fisicos se generen un poco menos.
+                PlaceArrow(worldPos, dir, desiredCount);
             }
         }
 
@@ -258,6 +293,7 @@ namespace VectorField
             scaleX      = 1f;
             scaleY      = 1f;
             zoneCenter  = Vector2.zero;
+            sampleAcrossEntireOcean = true;
             GenerateField();
         }
 
@@ -298,6 +334,8 @@ namespace VectorField
                     var   pt = new Vector2(x, z);
                     if (islandRadius > 0f && Vector2.Distance(pt, islandCenter) < islandRadius)
                         continue;
+                    if (onlyBackOfIsland && pt.y > (islandCenter.y - backEndOffset))
+                        continue;
                     if (avoidUnderIslandWater && IsPointUnderIsland(pt))
                         continue;
                     if (!IsPointValidForSpawn(pt))
@@ -317,6 +355,8 @@ namespace VectorField
 
                 if (islandRadius > 0f && Vector2.Distance(pt, islandCenter) < islandRadius)
                     continue;
+                if (onlyBackOfIsland && pt.y > (islandCenter.y - backEndOffset))
+                    continue;
                 if (avoidUnderIslandWater && IsPointUnderIsland(pt))
                     continue;
                 if (!IsPointValidForSpawn(pt))
@@ -335,6 +375,39 @@ namespace VectorField
             float minZ = oceanBounds.min.z;
             float maxZ = oceanBounds.max.z;
 
+            float sideInset = Mathf.Clamp(oceanSideInset, 0f, Mathf.Max(0f, (maxX - minX) * 0.49f));
+            float frontBackInset = Mathf.Clamp(oceanFrontBackInset, 0f, Mathf.Max(0f, (maxZ - minZ) * 0.49f));
+            minX += sideInset;
+            maxX -= sideInset;
+            minZ += frontBackInset;
+            maxZ -= frontBackInset;
+
+            if (onlyBackOfIsland)
+                maxZ = Mathf.Min(maxZ, islandCenter.y - backEndOffset);
+
+            ApplyBackSectorSlice(ref minX, ref maxX);
+
+            // Modo solicitado: acomodar los vectores en un rectangulo compacto solo atras del mapa.
+            if (useBackPackedRectangle)
+            {
+                float padX = Mathf.Clamp(packedRectHorizontalPadding, 0f, Mathf.Max(0f, (maxX - minX) * 0.49f));
+                float padBack = Mathf.Clamp(packedRectBackPadding, 0f, Mathf.Max(0f, (maxZ - minZ) * 0.49f));
+                float padFront = Mathf.Clamp(packedRectFrontPadding, 0f, Mathf.Max(0f, (maxZ - minZ) * 0.49f));
+
+                minX += padX;
+                maxX -= padX;
+                minZ += padBack;
+                maxZ -= padFront;
+
+                if (minX >= maxX || minZ >= maxZ)
+                    return new List<Vector2>(0);
+
+                return BuildPackedRectanglePoints(n, minX, maxX, minZ, maxZ);
+            }
+
+            if (minX >= maxX || minZ >= maxZ)
+                return new List<Vector2>(0);
+
             float width = Mathf.Max(1f, maxX - minX);
             float depth = Mathf.Max(1f, maxZ - minZ);
             float aspect = width / depth;
@@ -344,8 +417,9 @@ namespace VectorField
 
             float stepX = width / cols;
             float stepZ = depth / rows;
-            float jitterX = stepX * 0.35f;
-            float jitterZ = stepZ * 0.35f;
+            float jitter = Mathf.Clamp(spawnJitterFactor, 0f, 0.45f);
+            float jitterX = stepX * jitter;
+            float jitterZ = stepZ * jitter;
 
             var pts = new List<Vector2>(n);
             for (int r = 0; r < rows && pts.Count < n; r++)
@@ -360,6 +434,8 @@ namespace VectorField
                     var pt = new Vector2(Mathf.Clamp(x, minX, maxX), Mathf.Clamp(z, minZ, maxZ));
 
                     if (islandRadius > 0f && Vector2.Distance(pt, islandCenter) < islandRadius)
+                        continue;
+                    if (onlyBackOfIsland && pt.y > (islandCenter.y - backEndOffset))
                         continue;
                     if (avoidUnderIslandWater && IsPointUnderIsland(pt))
                         continue;
@@ -381,12 +457,70 @@ namespace VectorField
 
                 if (islandRadius > 0f && Vector2.Distance(pt, islandCenter) < islandRadius)
                     continue;
+                if (onlyBackOfIsland && pt.y > (islandCenter.y - backEndOffset))
+                    continue;
                 if (avoidUnderIslandWater && IsPointUnderIsland(pt))
                     continue;
                 if (!IsPointValidForSpawn(pt))
                     continue;
 
                 pts.Add(pt);
+            }
+
+            return pts;
+        }
+
+        void ApplyBackSectorSlice(ref float minX, ref float maxX)
+        {
+            if (!useBackSectors)
+                return;
+
+            int sectors = Mathf.Max(1, backSectors);
+            if (sectors <= 1)
+            {
+                backSectorIndex = 0;
+                return;
+            }
+
+            float width = maxX - minX;
+            if (width <= 0.001f)
+                return;
+
+            int idx = Mathf.Clamp(backSectorIndex, 0, sectors - 1);
+            float sectorWidth = width / sectors;
+
+            float sMinX = minX + sectorWidth * idx;
+            float sMaxX = sMinX + sectorWidth;
+
+            // Evitar degenerados por acumulacion de float.
+            if (sMaxX <= sMinX + 0.001f)
+                return;
+
+            minX = sMinX;
+            maxX = sMaxX;
+        }
+
+        List<Vector2> BuildPackedRectanglePoints(int n, float minX, float maxX, float minZ, float maxZ)
+        {
+            float width = Mathf.Max(0.0001f, maxX - minX);
+            float depth = Mathf.Max(0.0001f, maxZ - minZ);
+            float aspect = width / depth;
+
+            int cols = Mathf.Max(1, Mathf.RoundToInt(Mathf.Sqrt(n * aspect)));
+            int rows = Mathf.Max(1, Mathf.CeilToInt((float)n / cols));
+
+            float stepX = width / cols;
+            float stepZ = depth / rows;
+
+            var pts = new List<Vector2>(n);
+            for (int r = 0; r < rows && pts.Count < n; r++)
+            {
+                float z = minZ + (r + 0.5f) * stepZ;
+                for (int c = 0; c < cols && pts.Count < n; c++)
+                {
+                    float x = minX + (c + 0.5f) * stepX;
+                    pts.Add(new Vector2(x, z));
+                }
             }
 
             return pts;
@@ -593,12 +727,29 @@ namespace VectorField
             if (dir2D.sqrMagnitude < 1e-6f) { PlaceDot(worldPos); return; }
 
             float mag     = dir2D.magnitude;
-            float spacing = (fieldRadius * 2f) / Mathf.Max(1, Mathf.Sqrt(totalCount));
-            float maxLen  = spacing * 0.90f;
-            float scale   = arrowScale * Mathf.Min(1f, maxLen / (mag * arrowScale + 0.0001f));
-            // minimo: 55% del espaciado para que las flechas sean siempre visibles
-            float minScale = Mathf.Max(0.15f, maxLen * 0.55f);
-            scale = Mathf.Clamp(scale, minScale, maxLen);
+            // ── Escala por cantidad (pedido)
+            // - 100  -> grande
+            // - 1000 -> se achica progresivo (absoluteMinArrowScale)
+            // - 2000 -> MUY pequeno (absoluteMinArrowScale * backSectorShrinkAt2000)
+            int countClamped = Mathf.Clamp(totalCount, 100, 2000);
+            float scaleAt1000 = Mathf.Max(0.0001f, absoluteMinArrowScale);
+            float scaleAt2000 = Mathf.Max(0.0001f, scaleAt1000 * Mathf.Clamp(backSectorShrinkAt2000, 0.01f, 0.5f));
+            float scale;
+            if (countClamped <= 1000)
+            {
+                float t = Mathf.InverseLerp(100f, 1000f, countClamped);
+                scale = Mathf.Lerp(absoluteMaxArrowScale, scaleAt1000, t);
+            }
+            else
+            {
+                float t = Mathf.InverseLerp(1000f, 2000f, countClamped);
+                scale = Mathf.Lerp(scaleAt1000, scaleAt2000, t);
+            }
+            // Ajuste leve por magnitud del vector (vectores muy cortos se achican un poco)
+            if (mag < 0.01f) scale *= 0.5f;
+            float minAllowed = Mathf.Min(scaleAt2000, absoluteMaxArrowScale);
+            float maxAllowed = Mathf.Max(scaleAt1000, absoluteMaxArrowScale);
+            scale = Mathf.Clamp(scale, minAllowed, maxAllowed);
 
             float angle = Mathf.Atan2(dir2D.x, dir2D.y) * Mathf.Rad2Deg;
             Quaternion rot;
@@ -621,6 +772,9 @@ namespace VectorField
                 arrow = Instantiate(arrowPrefab, worldPos, rot, transform);
             else
                 arrow = CreateSimpleArrow(worldPos, rot);
+
+            if (forceFieldColor)
+                ApplyFieldColor(arrow, forcedFieldColor);
 
             arrow.transform.localScale = Vector3.one * scale;
             _arrows.Add(arrow);
@@ -653,6 +807,29 @@ namespace VectorField
         {
             if (_coneMesh == null) _coneMesh = CreateConeMesh(10, 1f, 1f);
             return _coneMesh;
+        }
+
+        static void ApplyFieldColor(GameObject arrow, Color color)
+        {
+            if (arrow == null)
+                return;
+
+            var renderers = arrow.GetComponentsInChildren<Renderer>(true);
+            if (renderers == null || renderers.Length == 0)
+                return;
+
+            var block = new MaterialPropertyBlock();
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var r = renderers[i];
+                if (r == null)
+                    continue;
+
+                r.GetPropertyBlock(block);
+                block.SetColor("_Color", color);
+                block.SetColor("_BaseColor", color);
+                r.SetPropertyBlock(block);
+            }
         }
 
         GameObject CreateSimpleArrow(Vector3 pos, Quaternion rot)

@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using VectorFieldUI;
 
 /// <summary>
-/// Adds the missing dropScaleX, dropScaleY, and dropZone UI dropdowns
+/// Adds the missing inputScaleX, inputScaleY, and dropZone UI controls
 /// to the Panel prefab and wires them to PanelController.
 /// Run once: Menu → Panel → Add Missing Dropdowns
 /// </summary>
@@ -89,18 +89,19 @@ public class PanelUISetup
 
         Transform content = existingDrop.transform.parent;
 
-        if (pc.dropScaleX == null)
+        // Reemplazar dropdowns con inputs de texto para X/Y
+        if (pc.inputScaleX == null)
         {
-            pc.dropScaleX = FindOrCreateDropdown(content, "DropdownScaleX", "Multiplicador X");
+            pc.inputScaleX = FindOrCreateInputField(content, "InputScaleX", "Multiplicador X");
             changed = true;
-            Debug.Log("[PanelSetup] dropScaleX created/linked.");
+            Debug.Log("[PanelSetup] inputScaleX created/linked.");
         }
 
-        if (pc.dropScaleY == null)
+        if (pc.inputScaleY == null)
         {
-            pc.dropScaleY = FindOrCreateDropdown(content, "DropdownScaleY", "Multiplicador Y");
+            pc.inputScaleY = FindOrCreateInputField(content, "InputScaleY", "Multiplicador Y");
             changed = true;
-            Debug.Log("[PanelSetup] dropScaleY created/linked.");
+            Debug.Log("[PanelSetup] inputScaleY created/linked.");
         }
 
         if (pc.dropZone == null)
@@ -123,7 +124,7 @@ public class PanelUISetup
         var panelCanvasRt = pc.GetComponent<RectTransform>();
         if (panelCanvasRt != null)
         {
-            var targetSize = new Vector2(Mathf.Max(panelCanvasRt.sizeDelta.x, 420f), 760f);
+            var targetSize = new Vector2(Mathf.Max(panelCanvasRt.sizeDelta.x, 480f), 650f);
             if (panelCanvasRt.sizeDelta != targetSize)
             {
                 panelCanvasRt.sizeDelta = targetSize;
@@ -137,25 +138,23 @@ public class PanelUISetup
 
         EnsureDropdownVisualSafety(pc.dropCount, ref changed);
         EnsureDropdownVisualSafety(pc.dropFormula, ref changed);
-        EnsureDropdownVisualSafety(pc.dropScaleX, ref changed);
-        EnsureDropdownVisualSafety(pc.dropScaleY, ref changed);
         EnsureDropdownVisualSafety(pc.dropZone, ref changed);
 
         var vlg = content.GetComponent<VerticalLayoutGroup>();
         if (vlg != null)
         {
-            if (vlg.spacing != 8f)
+            if (vlg.spacing != 2f)
             {
-                vlg.spacing = 8f;
+                vlg.spacing = 2f;
                 changed = true;
             }
 
-            if (vlg.padding.top != 16 || vlg.padding.bottom != 16 || vlg.padding.left != 16 || vlg.padding.right != 16)
+            if (vlg.padding.top != 4 || vlg.padding.bottom != 12 || vlg.padding.left != 12 || vlg.padding.right != 12)
             {
-                vlg.padding.top = 16;
-                vlg.padding.bottom = 16;
-                vlg.padding.left = 16;
-                vlg.padding.right = 16;
+                vlg.padding.top = 4;
+                vlg.padding.bottom = 12;
+                vlg.padding.left = 12;
+                vlg.padding.right = 12;
                 changed = true;
             }
 
@@ -171,39 +170,69 @@ public class PanelUISetup
 
         var titleLabel = EnsureTitleLabel(content, ref changed);
         var descriptionLabel = EnsureDescriptionLabel(content, ref changed);
-        var sectionFunctions = EnsureSimpleLabel(content, "FunctionsSectionLabel", "Funciones", 20f, FontStyles.Bold, ref changed);
+        if (descriptionLabel != null && descriptionLabel.gameObject.activeSelf)
+        {
+            descriptionLabel.gameObject.SetActive(false);
+            changed = true;
+        }
 
-        var countLabel = EnsureLabelForDropdown(content, pc.dropCount, "CountFunctionLabel", "Cantidad de vectores", ref changed);
-        var formulaLabel = EnsureLabelForDropdown(content, pc.dropFormula, "FormulaFunctionLabel", "Formula del vector", ref changed);
-        var scaleXLabel = EnsureLabelForDropdown(content, pc.dropScaleX, "DropdownScaleX_Label", "Multiplicador X", ref changed);
-        var scaleYLabel = EnsureLabelForDropdown(content, pc.dropScaleY, "DropdownScaleY_Label", "Multiplicador Y", ref changed);
+        var sectionFunctions = EnsureSimpleLabel(content, "FunctionsSectionLabel", "Funciones:", 20f, FontStyles.Bold, ref changed);
+
+        var countLabel = EnsureLabelForDropdown(content, pc.dropCount, "CountFunctionLabel", "Cantidad de Vectores", ref changed);
+        var countDesc = EnsureDescriptionSmall(content, "CountDesc", "Elige cuántos vectores mostrar en el campo", ref changed);
+        
+        var formulaLabel = EnsureLabelForDropdown(content, pc.dropFormula, "FormulaFunctionLabel", "Fórmula", ref changed);
+        var formulaDesc = EnsureDescriptionSmall(content, "FormulaDesc", "Selecciona el patrón de dirección de los vectores", ref changed);
+        
+        var scaleXLabel = EnsureLabelForInputField(content, pc.inputScaleX, "InputScaleX_Label", "Escala X", ref changed);
+        var scaleXDesc = EnsureDescriptionSmall(content, "ScaleXDesc", "Multiplicador para el eje X (ingresa cualquier número)", ref changed);
+        
+        var scaleYLabel = EnsureLabelForInputField(content, pc.inputScaleY, "InputScaleY_Label", "Escala Y", ref changed);
+        var scaleYDesc = EnsureDescriptionSmall(content, "ScaleYDesc", "Multiplicador para el eje Y (ingresa cualquier número)", ref changed);
+        
         var zoneLabel = EnsureLabelForDropdown(content, pc.dropZone, "DropdownZone_Label", "Zona", ref changed);
+        var zoneDesc = EnsureDescriptionSmall(content, "ZoneDesc", "Elige el área del océano donde mostrar los vectores", ref changed);
 
-        changed |= DisableLegacyDuplicateLabels(content, titleLabel, descriptionLabel, sectionFunctions, countLabel, formulaLabel, scaleXLabel, scaleYLabel, zoneLabel);
+        changed |= DisableLegacyDuplicateLabels(content, titleLabel, sectionFunctions, countLabel, countDesc, formulaLabel, formulaDesc, scaleXLabel, scaleXDesc, scaleYLabel, scaleYDesc, zoneLabel, zoneDesc);
 
         int insertIndex = 0;
-        insertIndex = PlaceBlock(content, titleLabel != null ? titleLabel.transform : null, insertIndex, ref changed);
-        insertIndex = PlaceBlock(content, descriptionLabel != null ? descriptionLabel.transform : null, insertIndex, ref changed);
+        if (pc.statusLabel != null && pc.statusLabel.name != "PanelTitleLabel")
+        {
+            if (pc.statusLabel.gameObject.activeSelf)
+            {
+                pc.statusLabel.gameObject.SetActive(false);
+                changed = true;
+            }
+        }
 
-        if (pc.statusLabel != null)
-            insertIndex = PlaceBlock(content, pc.statusLabel.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, titleLabel?.transform, insertIndex, ref changed);
 
-        insertIndex = PlaceBlock(content, sectionFunctions != null ? sectionFunctions.transform : null, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, sectionFunctions?.transform, insertIndex, ref changed);
 
-        insertIndex = PlaceBlock(content, countLabel != null ? countLabel.transform : null, insertIndex, ref changed);
-        insertIndex = PlaceBlock(content, pc.dropCount != null ? pc.dropCount.transform : null, insertIndex, ref changed);
+        // Cantidad
+        insertIndex = PlaceBlock(content, countLabel?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, pc.dropCount?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, countDesc?.transform, insertIndex, ref changed);
 
-        insertIndex = PlaceBlock(content, formulaLabel != null ? formulaLabel.transform : null, insertIndex, ref changed);
-        insertIndex = PlaceBlock(content, pc.dropFormula != null ? pc.dropFormula.transform : null, insertIndex, ref changed);
+        // Fórmula
+        insertIndex = PlaceBlock(content, formulaLabel?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, pc.dropFormula?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, formulaDesc?.transform, insertIndex, ref changed);
 
-        insertIndex = PlaceBlock(content, scaleXLabel != null ? scaleXLabel.transform : null, insertIndex, ref changed);
-        insertIndex = PlaceBlock(content, pc.dropScaleX != null ? pc.dropScaleX.transform : null, insertIndex, ref changed);
+        // Escala X
+        insertIndex = PlaceBlock(content, scaleXLabel?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, pc.inputScaleX?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, scaleXDesc?.transform, insertIndex, ref changed);
 
-        insertIndex = PlaceBlock(content, scaleYLabel != null ? scaleYLabel.transform : null, insertIndex, ref changed);
-        insertIndex = PlaceBlock(content, pc.dropScaleY != null ? pc.dropScaleY.transform : null, insertIndex, ref changed);
+        // Escala Y
+        insertIndex = PlaceBlock(content, scaleYLabel?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, pc.inputScaleY?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, scaleYDesc?.transform, insertIndex, ref changed);
 
-        insertIndex = PlaceBlock(content, zoneLabel != null ? zoneLabel.transform : null, insertIndex, ref changed);
-        insertIndex = PlaceBlock(content, pc.dropZone != null ? pc.dropZone.transform : null, insertIndex, ref changed);
+        // Zona
+        insertIndex = PlaceBlock(content, zoneLabel?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, pc.dropZone?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, zoneDesc?.transform, insertIndex, ref changed);
 
         var spacer = content.Find("ButtonsSpacer");
         if (spacer == null)
@@ -215,9 +244,9 @@ public class PanelUISetup
         }
 
         var spacerLE = spacer.GetComponent<LayoutElement>();
-        if (spacerLE.preferredHeight != 16f)
+        if (spacerLE.preferredHeight != 8f)
         {
-            spacerLE.preferredHeight = 16f;
+            spacerLE.preferredHeight = 8f;
             changed = true;
         }
 
@@ -256,6 +285,7 @@ public class PanelUISetup
         changed |= MoveButtonToRow(pc.btnGenerate, row);
         changed |= MoveButtonToRow(pc.btnReset, row);
         changed |= MoveButtonToRow(pc.btnDelete, row);
+        EnsureGenerateButtonStyle(pc.btnGenerate, ref changed);
 
         if (row.GetSiblingIndex() != content.childCount - 1)
         {
@@ -290,9 +320,9 @@ public class PanelUISetup
                 changed = true;
             }
 
-            if (rt.sizeDelta.y < 34f)
+            if (rt.sizeDelta.y < 36f)
             {
-                rt.sizeDelta = new Vector2(rt.sizeDelta.x, 38f);
+                rt.sizeDelta = new Vector2(rt.sizeDelta.x, 36f);
                 changed = true;
             }
         }
@@ -304,9 +334,9 @@ public class PanelUISetup
             changed = true;
         }
 
-        if (le.preferredHeight != 38f)
+        if (le.preferredHeight != 36f)
         {
-            le.preferredHeight = 38f;
+            le.preferredHeight = 36f;
             changed = true;
         }
 
@@ -332,7 +362,29 @@ public class PanelUISetup
             }
         }
 
-        title = EnsureSimpleLabel(content, "PanelTitleLabel", "CAMPO VECTORIAL", 28f, FontStyles.Bold, ref changed, title);
+        title = EnsureSimpleLabel(content, "PanelTitleLabel", "CAMPO VECTORIAL", 42f, FontStyles.Bold, ref changed, title);
+        
+        // Asegurar color azul claro brillante para el título
+        if (title.color != new Color(0.08f, 0.56f, 1f))
+        {
+            title.color = new Color(0.08f, 0.56f, 1f);
+            changed = true;
+        }
+
+        // Asegurar buen tamaño en el layout
+        var le = title.GetComponent<LayoutElement>();
+        if (le == null)
+        {
+            le = title.gameObject.AddComponent<LayoutElement>();
+            changed = true;
+        }
+
+        if (le.preferredHeight != 48f)
+        {
+            le.preferredHeight = 48f;
+            changed = true;
+        }
+
         return title;
     }
 
@@ -399,6 +451,35 @@ public class PanelUISetup
         return label;
     }
 
+    static TextMeshProUGUI EnsureLabelForInputField(Transform content, TMP_InputField inputField, string labelName, string labelText, ref bool changed)
+    {
+        if (inputField == null)
+            return null;
+
+        var label = FindDirectLabel(content, labelName);
+        if (label == null)
+        {
+            int targetIdx = Mathf.Max(inputField.transform.GetSiblingIndex() - 1, 0);
+            if (targetIdx < content.childCount)
+            {
+                var previous = content.GetChild(targetIdx);
+                if (previous != null && previous.parent == content)
+                {
+                    var prevText = previous.GetComponent<TextMeshProUGUI>();
+                    if (prevText != null)
+                    {
+                        prevText.name = labelName;
+                        label = prevText;
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        label = EnsureSimpleLabel(content, labelName, labelText, 17f, FontStyles.Bold, ref changed, label);
+        return label;
+    }
+
     static TextMeshProUGUI EnsureSimpleLabel(
         Transform content,
         string name,
@@ -420,6 +501,12 @@ public class PanelUISetup
         if (label.name != name)
         {
             label.name = name;
+            changed = true;
+        }
+
+        if (!label.gameObject.activeSelf)
+        {
+            label.gameObject.SetActive(true);
             changed = true;
         }
 
@@ -447,9 +534,9 @@ public class PanelUISetup
             changed = true;
         }
 
-        if (!label.enableWordWrapping)
+        if (label.textWrappingMode == TextWrappingModes.NoWrap)
         {
-            label.enableWordWrapping = true;
+            label.textWrappingMode = TextWrappingModes.Normal;
             changed = true;
         }
 
@@ -460,7 +547,7 @@ public class PanelUISetup
             changed = true;
         }
 
-        float desiredHeight = fontSize >= 24f ? 44f : (fontSize >= 18f ? 28f : 40f);
+        float desiredHeight = fontSize >= 24f ? 44f : (fontSize >= 18f ? 28f : 20f);
         if (Mathf.Abs(le.preferredHeight - desiredHeight) > 0.01f)
         {
             le.preferredHeight = desiredHeight;
@@ -489,6 +576,78 @@ public class PanelUISetup
         }
 
         return null;
+    }
+
+    static TextMeshProUGUI EnsureDescriptionSmall(Transform content, string name, string text, ref bool changed)
+    {
+        var label = FindDirectLabel(content, name);
+        if (label == null)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(LayoutElement), typeof(TextMeshProUGUI));
+            go.transform.SetParent(content, false);
+            label = go.GetComponent<TextMeshProUGUI>();
+            changed = true;
+        }
+
+        if (label.name != name)
+        {
+            label.name = name;
+            changed = true;
+        }
+
+        if (label.text != text)
+        {
+            label.text = text;
+            changed = true;
+        }
+
+        float fontSize = 12f;
+        if (Mathf.Abs(label.fontSize - fontSize) > 0.01f)
+        {
+            label.fontSize = fontSize;
+            changed = true;
+        }
+
+        // Color gris más tenue para descripciones
+        Color descColor = new Color(0.65f, 0.65f, 0.65f, 0.9f);
+        if (label.color != descColor)
+        {
+            label.color = descColor;
+            changed = true;
+        }
+
+        if (label.fontStyle != FontStyles.Italic)
+        {
+            label.fontStyle = FontStyles.Italic;
+            changed = true;
+        }
+
+        if (label.textWrappingMode == TextWrappingModes.NoWrap)
+        {
+            label.textWrappingMode = TextWrappingModes.Normal;
+            changed = true;
+        }
+
+        var le = label.GetComponent<LayoutElement>();
+        if (le == null)
+        {
+            le = label.gameObject.AddComponent<LayoutElement>();
+            changed = true;
+        }
+
+        if (Mathf.Abs(le.preferredHeight - 12f) > 0.01f)
+        {
+            le.preferredHeight = 12f;
+            changed = true;
+        }
+
+        if (le.flexibleWidth != 1f)
+        {
+            le.flexibleWidth = 1f;
+            changed = true;
+        }
+
+        return label;
     }
 
     static bool DisableLegacyDuplicateLabels(Transform content, params TextMeshProUGUI[] keep)
@@ -580,6 +739,86 @@ public class PanelUISetup
         return changed;
     }
 
+    static void EnsureGenerateButtonStyle(Button generateButton, ref bool changed)
+    {
+        if (generateButton == null)
+            return;
+
+        var text = generateButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (text != null)
+        {
+            if (text.text != "Generar Campo Vectorial")
+            {
+                text.text = "Generar Campo Vectorial";
+                changed = true;
+            }
+
+            if (text.color != Color.white)
+            {
+                text.color = Color.white;
+                changed = true;
+            }
+
+            if (text.fontStyle != FontStyles.Bold)
+            {
+                text.fontStyle = FontStyles.Bold;
+                changed = true;
+            }
+        }
+
+        var image = generateButton.GetComponent<Image>();
+        if (image != null)
+        {
+            Color normal = new Color(0.12f, 0.70f, 0.26f, 1f);
+            if (image.color != normal)
+            {
+                image.color = normal;
+                changed = true;
+            }
+
+            var colors = generateButton.colors;
+            bool colorsChanged = false;
+
+            if (colors.normalColor != normal)
+            {
+                colors.normalColor = normal;
+                colorsChanged = true;
+            }
+
+            var highlighted = new Color(0.18f, 0.78f, 0.33f, 1f);
+            if (colors.highlightedColor != highlighted)
+            {
+                colors.highlightedColor = highlighted;
+                colorsChanged = true;
+            }
+
+            var pressed = new Color(0.08f, 0.58f, 0.20f, 1f);
+            if (colors.pressedColor != pressed)
+            {
+                colors.pressedColor = pressed;
+                colorsChanged = true;
+            }
+
+            if (colors.selectedColor != highlighted)
+            {
+                colors.selectedColor = highlighted;
+                colorsChanged = true;
+            }
+
+            if (colors.colorMultiplier != 1f)
+            {
+                colors.colorMultiplier = 1f;
+                colorsChanged = true;
+            }
+
+            if (colorsChanged)
+            {
+                generateButton.colors = colors;
+                changed = true;
+            }
+        }
+    }
+
     static TMP_Dropdown FindOrCreateDropdown(Transform parent, string objName, string labelText)
     {
         var existing = parent.Find(objName);
@@ -591,6 +830,19 @@ public class PanelUISetup
         }
 
         return CreateLabeledDropdown(parent, objName, labelText);
+    }
+
+    static TMP_InputField FindOrCreateInputField(Transform parent, string objName, string labelText)
+    {
+        var existing = parent.Find(objName);
+        if (existing != null)
+        {
+            var existingInput = existing.GetComponent<TMP_InputField>();
+            if (existingInput != null)
+                return existingInput;
+        }
+
+        return CreateLabeledInputField(parent, objName, labelText);
     }
 
     static TMP_Dropdown CreateLabeledDropdown(Transform parent, string objName, string labelText)
@@ -618,6 +870,52 @@ public class PanelUISetup
         drop.ClearOptions();
 
         return drop;
+    }
+
+    static TMP_InputField CreateLabeledInputField(Transform parent, string objName, string labelText)
+    {
+        // --- input field ---
+        GameObject inputGO = new GameObject(objName);
+        inputGO.transform.SetParent(parent, false);
+
+        var inputRt = inputGO.AddComponent<RectTransform>();
+        var inputLE = inputGO.AddComponent<LayoutElement>();
+        inputLE.preferredHeight = 36f;
+        inputLE.flexibleWidth = 1f;
+
+        // Visual: Image as background
+        var bgImage = inputGO.AddComponent<Image>();
+        bgImage.color = new Color(0.10f, 0.20f, 0.30f, 0.9f);
+
+        // Add border effect
+        var outline = inputGO.AddComponent<Outline>();
+        outline.effectColor = new Color(0.3f, 0.6f, 0.8f, 0.5f);
+        outline.effectDistance = new Vector2(1, 1);
+
+        // Text component
+        GameObject textGO = new GameObject("Text", typeof(RectTransform));
+        textGO.transform.SetParent(inputGO.transform, false);
+        var textRect = textGO.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(12, 0);
+        textRect.offsetMax = new Vector2(-12, 0);
+
+        var textMesh = textGO.AddComponent<TextMeshProUGUI>();
+        textMesh.text = "1";
+        textMesh.fontSize = 20;
+        textMesh.color = new Color(0.9f, 0.95f, 1f);
+        textMesh.alignment = TextAlignmentOptions.MidlineLeft;
+
+        // Input field component
+        var inputField = inputGO.AddComponent<TMP_InputField>();
+        inputField.text = "1";
+        inputField.characterLimit = 12;
+        inputField.contentType = TMP_InputField.ContentType.DecimalNumber;
+        inputField.textComponent = textMesh;
+        inputField.targetGraphic = bgImage;
+
+        return inputField;
     }
 
     static bool RemoveConflictingTrackedRaycasters(GameObject root)
