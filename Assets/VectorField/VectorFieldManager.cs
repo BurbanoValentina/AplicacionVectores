@@ -23,10 +23,33 @@ namespace VectorField
         [Header("Prefab de la flecha")]
         public GameObject arrowPrefab;
 
+        [Header("Visibilidad (fallback sin prefab)")]
+        [Tooltip("Si no hay arrowPrefab, se generan flechas simples con primitivas. Con conteos altos (ej. 2000) el escalado por cantidad puede volverlas demasiado pequeñas. Este multiplicador las hace visibles.")]
+        [Min(1f)]
+        public float simpleArrowScaleMultiplier = 8f;
+
         [Header("Configuracion del campo")]
         public int         vectorCount = 300;
         public float       fieldRadius = 20f;
         public float       arrowScale  = 1f;
+
+        [Header("Zonas / persistencia")]
+        [Tooltip("Si esta activo, al generar se reemplaza solo la zona actual y las otras zonas quedan en escena.")]
+        public bool accumulateByZone = true;
+        [Tooltip("Clave de zona actual (la setea el Panel). Si esta vacia, se calcula desde backSectors/backSectorIndex.")]
+        public string activeZoneKey = "";
+
+        [Header("Packing (densidad)")]
+        [Tooltip("Si esta activo, el campo se empaqueta en un rectangulo mas pequeno para que las flechas queden mas juntas.")]
+        public bool useDensePacking = true;
+        [Min(0.05f)]
+        public float desiredCellSize = 0.60f;
+        [Tooltip("Si hay sectores atras, fuerza que cada zona sea cuadrada (profundidad = ancho del sector).")]
+        public bool squareBackSectorZones = true;
+
+        [Header("Altura de spawn")]
+        public bool autoDetectWaterYFromOceanBounds = true;
+        public float spawnYOffset = 0.15f;
 
         [Header("Forzado para demo")]
         public bool forceAtLeastNVectors = true;
@@ -88,6 +111,23 @@ namespace VectorField
         [Header("Formula activa")]
         public FieldFormula formula    = FieldFormula.RadialOutward;
 
+        [Header("Funciones f(x,y) (James Stewart)")]
+        [Tooltip("Si está activo, el vector se evalúa como F(x,y)=<P(x,y),Q(x,y)> usando los textos ingresados en el panel.")]
+        public bool useFunctionInputs = false;
+        [Tooltip("Primera función P(x,y)")]
+        public string functionP = "x";
+        [Tooltip("Segunda función Q(x,y)")]
+        public string functionQ = "y";
+
+        [Header("Área fija detrás del agua")]
+        [Tooltip("Si está activo, fuerza un solo campo rectangular detrás del océano, centrado en la parte trasera, del tamaño de la isla.")]
+        public bool useSingleBackRectSameAsIsland = false;
+        [Min(0f)]
+        public float backRectEdgeInset = 0.5f;
+        [Tooltip("Multiplica el tamaño del rectángulo detrás del mapa (1 = tamaño isla). Útil para 'un poco más grande'.")]
+        [Min(0.5f)]
+        public float backRectScaleMultiplier = 1.5f;
+
         [Header("Punto Objetivo (solo para TargetPoint)")]
         public bool    useTarget = false;
         public Vector3 target    = Vector3.zero;
@@ -96,8 +136,37 @@ namespace VectorField
         public float animSpeed = 1.5f;
         public float animAmplitude = 0.3f;
 
-        readonly List<GameObject> _arrows = new List<GameObject>();
-        readonly List<ArrowAnimData> _animData = new List<ArrowAnimData>();
+        [Header("Magnitud (estilo Stewart)")]
+        [Tooltip("Si está activo, la longitud de cada flecha es proporcional a |F(x,y)| (como en los diagramas del libro).")]
+        public bool useVectorMagnitudeForLength = true;
+        [Tooltip("Factor para convertir magnitud |F| en escala de longitud.")]
+        public float magnitudeToLength = 0.18f;
+        [Tooltip("Límite mínimo de longitud relativa.")]
+        public float minLengthFactor = 0.55f;
+        [Tooltip("Límite máximo de longitud relativa.")]
+        public float maxLengthFactor = 2.80f;
+
+        [Header("Parent de flechas")]
+        [Tooltip("Si el manager está bajo un Canvas/Panel con escala (ej. WorldSpace UI), las flechas heredan esa escala y pueden volverse invisibles.\nSi está activo, se crea/usa un root en la raíz de la escena con escala 1 para instanciar las flechas.")]
+        public bool spawnArrowsUnderSceneRoot = true;
+        [Tooltip("Opcional: si se asigna, las flechas se instancian bajo este transform.")]
+        public Transform arrowsParentOverride;
+
+        struct ArrowEntry
+        {
+            public string zoneKey;
+            public GameObject arrow;
+            public ArrowAnimData anim;
+        }
+
+        readonly List<ArrowEntry> _entries = new List<ArrowEntry>();
+
+        Transform _arrowsParentRuntime;
+
+        ExpressionCompiler.CompiledExpression _compiledP;
+        ExpressionCompiler.CompiledExpression _compiledQ;
+        string _compiledPLast;
+        string _compiledQLast;
 
         // true si el prefab apunta en +Y (FlechaApp3 con Cone/Cylinder ProBuilder)
         bool _prefabPointsUpY = false;
@@ -111,6 +180,8 @@ namespace VectorField
             public float offset;
         }
 
+        string _generationZoneKey = "";
+
         void Update()
         {
             if (!Application.isPlaying) return;
@@ -119,10 +190,29 @@ namespace VectorField
 
         public void GenerateField()
         {
-            ClearArrows();
+            string zoneKey = GetZoneKey();
+            _generationZoneKey = zoneKey;
+
+            if (accumulateByZone)
+                ClearZone(zoneKey);
+            else
+                ClearArrows();
+
             DetectPrefabOrientation();
             RefreshIslandBoundsFromScene();
             RefreshOceanBoundsFromScene();
+
+            if (!_hasOceanBounds)
+                Debug.LogWarning("[VFM] No se detectaron bounds del océano. Usando grid/fallback; ajusta oceanNameHint si hace falta.", this);
+
+            if (useFunctionInputs)
+            {
+                if (!EnsureCompiledFunctions(out string err))
+                {
+                    Debug.LogError($"[VFM] Funciones inválidas: {err}");
+                    return;
+                }
+            }
 
             int desiredCount = forceAtLeastNVectors
                 ? Mathf.Max(vectorCount, forcedMinimumVectorCount)
@@ -135,7 +225,29 @@ namespace VectorField
             float exclusionRadius = avoidIsland ? islandRadius + islandExclusionPadding : 0f;
 
             List<Vector2> positions;
-            if (sampleAcrossEntireOcean && _hasOceanBounds)
+            Vector2 evalOrigin = zoneCenter;
+
+            if (useSingleBackRectSameAsIsland && _hasOceanBounds && islandRadius > 0.01f)
+            {
+                float rectRadius = islandRadius * Mathf.Max(0.5f, backRectScaleMultiplier);
+                if (TryComputeBackRectSameAsIsland(_oceanBounds, islandCenter, rectRadius, backRectEdgeInset, out float minX, out float maxX, out float minZ, out float maxZ))
+                {
+                    evalOrigin = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
+                    zoneCenter = evalOrigin;
+
+                    positions = useDensePacking
+                        ? BuildDensePackedRectanglePoints(desiredCount, minX, maxX, minZ, maxZ)
+                        : BuildPackedRectanglePoints(desiredCount, minX, maxX, minZ, maxZ);
+                }
+                else
+                {
+                    // Fallback seguro
+                    positions = sampleAcrossEntireOcean && _hasOceanBounds
+                        ? BuildDistributedOceanPoints(desiredCount, _oceanBounds, islandCenter, exclusionRadius)
+                        : BuildGrid2D(desiredCount, fieldRadius, zoneCenter, islandCenter, exclusionRadius);
+                }
+            }
+            else if (sampleAcrossEntireOcean && _hasOceanBounds)
             {
                 positions = BuildDistributedOceanPoints(desiredCount, _oceanBounds, islandCenter, exclusionRadius);
             }
@@ -144,14 +256,231 @@ namespace VectorField
                 positions = BuildGrid2D(desiredCount, fieldRadius, zoneCenter, islandCenter, exclusionRadius);
             }
 
+            // Si por filtros/detección queda vacío, forzar un rectángulo detrás de la isla como último recurso.
+            if (positions == null || positions.Count == 0)
+            {
+                if (islandRadius > 0.01f)
+                {
+                    float half = Mathf.Max(5f, islandRadius);
+                    float minX = islandCenter.x - half;
+                    float maxX = islandCenter.x + half;
+                    // Asumimos "atrás" hacia -Z cuando no hay bounds del océano.
+                    float maxZ = islandCenter.y - Mathf.Max(0f, backEndOffset);
+                    float minZ = maxZ - (half * 2f);
+
+                    evalOrigin = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
+                    zoneCenter = evalOrigin;
+
+                    positions = useDensePacking
+                        ? BuildDensePackedRectanglePoints(desiredCount, minX, maxX, minZ, maxZ)
+                        : BuildPackedRectanglePoints(desiredCount, minX, maxX, minZ, maxZ);
+
+                    Debug.LogWarning($"[VFM] Fallback detrás de isla aplicado. rect=({minX:F1},{maxX:F1})x({minZ:F1},{maxZ:F1})", this);
+                }
+            }
+
+            if (positions == null || positions.Count == 0)
+            {
+                Debug.LogError($"[VFM] No hay puntos para spawnear. desired={desiredCount} oceanBounds={_hasOceanBounds} islandR={islandRadius} sampleOcean={sampleAcrossEntireOcean} backRect={useSingleBackRectSameAsIsland}", this);
+                return;
+            }
+
+            int placed = 0;
             foreach (Vector2 p in positions)
             {
-                Vector2 dir = EvaluateFormula(p, zoneCenter);
-                Vector3 worldPos = new Vector3(p.x, waterSurfaceY + 0.15f, p.y);
+                Vector2 dir = EvaluateFormula(p, evalOrigin);
+                Vector3 worldPos = new Vector3(p.x, GetSpawnY(p), p.y);
                 // Usar el conteo deseado (input del panel) para el escalado por cantidad,
                 // aunque por filtros fisicos se generen un poco menos.
                 PlaceArrow(worldPos, dir, desiredCount);
+                placed++;
             }
+
+            // Diagnóstico para encontrar rápido los objetos generados.
+            var parent = GetArrowsParent();
+            Debug.Log($"[VFM] Parent de flechas: {(parent != null ? parent.name : "<null>")} / root={(parent != null ? parent.root.name : "<null>")}", this);
+            if (positions.Count > 0)
+            {
+                var p0 = positions[0];
+                float y0 = GetSpawnY(p0);
+                Debug.Log($"[VFM] Ejemplo pos0=({p0.x:F2},{p0.y:F2}) ySpawn={y0:F2} oceanMaxY={(_hasOceanBounds ? _oceanBounds.max.y.ToString("F2") : "NA")} waterY={waterSurfaceY:F2}", this);
+            }
+
+            Debug.Log($"[VFM] Generado. placed={placed} desired={desiredCount} useFunctions={useFunctionInputs} backRect={useSingleBackRectSameAsIsland} oceanBounds={_hasOceanBounds}", this);
+        }
+
+        bool EnsureCompiledFunctions(out string error)
+        {
+            error = null;
+
+            string p = functionP ?? string.Empty;
+            string q = functionQ ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(p) || string.IsNullOrWhiteSpace(q))
+            {
+                error = "Ambas funciones deben tener texto";
+                return false;
+            }
+
+            if (_compiledP != null && _compiledQ != null && p == _compiledPLast && q == _compiledQLast)
+                return true;
+
+            if (!ExpressionCompiler.TryCompile(p, out _compiledP, out string errP))
+            {
+                error = $"Primera función: {errP}";
+                return false;
+            }
+
+            if (!ExpressionCompiler.TryCompile(q, out _compiledQ, out string errQ))
+            {
+                error = $"Segunda función: {errQ}";
+                return false;
+            }
+
+            _compiledPLast = p;
+            _compiledQLast = q;
+            return true;
+        }
+
+        public bool SetFunctions(string p, string q, out string error)
+        {
+            functionP = p ?? string.Empty;
+            functionQ = q ?? string.Empty;
+            useFunctionInputs = true;
+            _compiledPLast = null;
+            _compiledQLast = null;
+            _compiledP = null;
+            _compiledQ = null;
+            return EnsureCompiledFunctions(out error);
+        }
+
+        static bool TryComputeBackRectSameAsIsland(Bounds oceanBounds, Vector2 islandCenter, float islandRadius, float edgeInset, out float minX, out float maxX, out float minZ, out float maxZ)
+        {
+            // Rect del tamaño del diámetro de la isla.
+            float oceanW = oceanBounds.size.x;
+            float oceanD = oceanBounds.size.z;
+
+            float half = Mathf.Max(0.01f, islandRadius);
+            // Si el océano es más pequeño (por escalado del agua), ajustar para que quepa.
+            half = Mathf.Min(half, oceanW * 0.5f);
+            half = Mathf.Min(half, oceanD * 0.5f);
+
+            // Centrar horizontalmente en el centro del océano ("centro del mapa").
+            float centerX = oceanBounds.center.x;
+            float inset = Mathf.Max(0f, edgeInset);
+
+            // Elegir el borde "atrás" de forma robusta:
+            // tomamos el lado del océano (minZ o maxZ) que queda MÁS LEJOS del centro de la isla.
+            float distToMin = Mathf.Abs(islandCenter.y - oceanBounds.min.z);
+            float distToMax = Mathf.Abs(oceanBounds.max.z - islandCenter.y);
+            bool backIsMinZ = distToMin >= distToMax;
+
+            float targetCenterZ = backIsMinZ
+                ? (oceanBounds.min.z + inset + half)
+                : (oceanBounds.max.z - inset - half);
+
+            minX = centerX - half;
+            maxX = centerX + half;
+            minZ = targetCenterZ - half;
+            maxZ = targetCenterZ + half;
+
+            // Ajustar para que quede dentro del bounds del océano (solo shift, sin cambiar tamaño si es posible).
+            ShiftRect1D(oceanBounds.min.x, oceanBounds.max.x, ref minX, ref maxX);
+            ShiftRect1D(oceanBounds.min.z, oceanBounds.max.z, ref minZ, ref maxZ);
+
+            return (maxX - minX) > 0.01f && (maxZ - minZ) > 0.01f;
+        }
+
+        Transform GetArrowsParent()
+        {
+            if (arrowsParentOverride != null)
+                return arrowsParentOverride;
+
+            if (!Application.isPlaying)
+                return transform;
+
+            if (!spawnArrowsUnderSceneRoot)
+                return transform;
+
+            // Siempre crear un contenedor visible en la raíz durante Play.
+            if (_arrowsParentRuntime != null)
+                return _arrowsParentRuntime;
+
+            const string rootName = "[VectorFieldRuntimeRoot]";
+            var root = GameObject.Find(rootName);
+            if (root == null)
+            {
+                root = new GameObject(rootName);
+                root.transform.position = Vector3.zero;
+                root.transform.rotation = Quaternion.identity;
+                root.transform.localScale = Vector3.one;
+            }
+
+            var container = new GameObject($"[VFM Arrows] {gameObject.name}");
+            container.transform.SetParent(root.transform, false);
+            container.transform.localPosition = Vector3.zero;
+            container.transform.localRotation = Quaternion.identity;
+            container.transform.localScale = Vector3.one;
+
+            _arrowsParentRuntime = container.transform;
+            return _arrowsParentRuntime;
+        }
+
+        static void ShiftRect1D(float boundsMin, float boundsMax, ref float rectMin, ref float rectMax)
+        {
+            float size = rectMax - rectMin;
+            if (size <= 0.0001f)
+                return;
+
+            if (size > (boundsMax - boundsMin))
+            {
+                rectMin = boundsMin;
+                rectMax = boundsMax;
+                return;
+            }
+
+            if (rectMin < boundsMin)
+            {
+                float d = boundsMin - rectMin;
+                rectMin += d;
+                rectMax += d;
+            }
+            if (rectMax > boundsMax)
+            {
+                float d = rectMax - boundsMax;
+                rectMin -= d;
+                rectMax -= d;
+            }
+        }
+
+        string GetZoneKey()
+        {
+            if (!string.IsNullOrEmpty(activeZoneKey))
+                return activeZoneKey;
+
+            if (useBackSectors && backSectors > 1)
+                return $"Atras sector {Mathf.Clamp(backSectorIndex, 0, backSectors - 1) + 1}/{backSectors}";
+
+            return "Zona";
+        }
+
+        float GetSpawnY(Vector2 p)
+        {
+            if (autoDetectWaterYFromOceanBounds && _hasOceanBounds)
+            {
+                // Si detectamos mal el océano, su bounds puede tener altura enorme y las flechas
+                // terminan spawneando fuera de cámara. En ese caso, usamos waterSurfaceY.
+                float oceanHeight = _oceanBounds.size.y;
+                float oceanMaxY = _oceanBounds.max.y;
+                if (oceanHeight > 8f || float.IsNaN(oceanMaxY) || float.IsInfinity(oceanMaxY))
+                    return waterSurfaceY + spawnYOffset;
+
+                // Usar la superficie (max.y) y asegurar mínimo en waterSurfaceY.
+                float y = Mathf.Max(waterSurfaceY, oceanMaxY);
+                return y + spawnYOffset;
+            }
+
+            return waterSurfaceY + spawnYOffset;
         }
 
         void RefreshOceanBoundsFromScene()
@@ -161,7 +490,11 @@ namespace VectorField
                 return;
 
             if (!TryDetectOceanBounds(out var b))
-                return;
+            {
+                // Fallback: inferir un "oceano" por heurística (gran área XZ y poco grosor Y).
+                if (!TryDetectLargestFlatBounds(out b))
+                    return;
+            }
 
             _oceanBounds = b;
             _hasOceanBounds = true;
@@ -237,6 +570,76 @@ namespace VectorField
             return found && bestArea > 1f;
         }
 
+        bool TryDetectLargestFlatBounds(out Bounds bounds)
+        {
+            bounds = default;
+
+            var scene = SceneManager.GetActiveScene();
+            if (!scene.IsValid() || !scene.isLoaded)
+                return false;
+
+            var roots = scene.GetRootGameObjects();
+            if (roots == null || roots.Length == 0)
+                return false;
+
+            bool found = false;
+            float bestScore = -1f;
+
+            // Queremos un objeto con área XZ grande y altura Y pequeña (tipo plano de agua).
+            for (int i = 0; i < roots.Length; i++)
+            {
+                var root = roots[i];
+                if (root == null)
+                    continue;
+
+                var renderers = root.GetComponentsInChildren<Renderer>(true);
+                for (int r = 0; r < renderers.Length; r++)
+                {
+                    var ren = renderers[r];
+                    if (ren == null)
+                        continue;
+
+                    var b = ren.bounds;
+                    float area = b.size.x * b.size.z;
+                    if (area < 200f)
+                        continue;
+
+                    float height = Mathf.Max(0.0001f, b.size.y);
+                    float score = area * (1f / height);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bounds = b;
+                        found = true;
+                    }
+                }
+
+                var colliders = root.GetComponentsInChildren<Collider>(true);
+                for (int c = 0; c < colliders.Length; c++)
+                {
+                    var col = colliders[c];
+                    if (col == null)
+                        continue;
+
+                    var b = col.bounds;
+                    float area = b.size.x * b.size.z;
+                    if (area < 200f)
+                        continue;
+
+                    float height = Mathf.Max(0.0001f, b.size.y);
+                    float score = area * (1f / height);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bounds = b;
+                        found = true;
+                    }
+                }
+            }
+
+            return found;
+        }
+
         /// <summary>
         /// Detecta si el prefab apunta en +Y (FlechaApp3 con Cone hijo en Y>0)
         /// o en +Z (generado por ArrowPrefabGenerator con Body en Z=0.5).
@@ -298,18 +701,6 @@ namespace VectorField
         }
 
         public void DeleteField() { ClearArrows(); }
-
-        void AnimateArrows()
-        {
-            for (int i = 0; i < _arrows.Count && i < _animData.Count; i++)
-            {
-                if (_arrows[i] == null) continue;
-                var d = _animData[i];
-                if (d.moveDir.sqrMagnitude < 0.001f) continue;
-                float t = Mathf.Sin(Time.time * animSpeed + d.offset) * animAmplitude;
-                _arrows[i].transform.position = d.basePos + d.moveDir * t;
-            }
-        }
 
         // inflate: genera mas candidatos para compensar los filtrados por la isla
         List<Vector2> BuildGrid2D(int n, float radius, Vector2 center,
@@ -385,8 +776,6 @@ namespace VectorField
             if (onlyBackOfIsland)
                 maxZ = Mathf.Min(maxZ, islandCenter.y - backEndOffset);
 
-            ApplyBackSectorSlice(ref minX, ref maxX);
-
             // Modo solicitado: acomodar los vectores en un rectangulo compacto solo atras del mapa.
             if (useBackPackedRectangle)
             {
@@ -399,11 +788,28 @@ namespace VectorField
                 minZ += padBack;
                 maxZ -= padFront;
 
+                ApplyBackSectorSlice(ref minX, ref maxX);
+
+                if (squareBackSectorZones && useBackSectors && backSectors > 1)
+                {
+                    float sectorWidth = maxX - minX;
+                    if (sectorWidth > 0.001f)
+                    {
+                        float squareMaxZ = minZ + sectorWidth;
+                        maxZ = Mathf.Min(maxZ, squareMaxZ);
+                    }
+                }
+
                 if (minX >= maxX || minZ >= maxZ)
                     return new List<Vector2>(0);
 
+                if (useDensePacking)
+                    return BuildDensePackedRectanglePoints(n, minX, maxX, minZ, maxZ);
+
                 return BuildPackedRectanglePoints(n, minX, maxX, minZ, maxZ);
             }
+
+            ApplyBackSectorSlice(ref minX, ref maxX);
 
             if (minX >= maxX || minZ >= maxZ)
                 return new List<Vector2>(0);
@@ -468,6 +874,39 @@ namespace VectorField
             }
 
             return pts;
+        }
+
+        List<Vector2> BuildDensePackedRectanglePoints(int n, float minX, float maxX, float minZ, float maxZ)
+        {
+            if (n <= 0)
+                return new List<Vector2>(0);
+
+            float availableW = Mathf.Max(0.0001f, maxX - minX);
+            float availableD = Mathf.Max(0.0001f, maxZ - minZ);
+
+            int cols = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(n)));
+            int rows = Mathf.Max(1, Mathf.CeilToInt((float)n / cols));
+
+            float cell = Mathf.Max(0.05f, desiredCellSize);
+            float reqW = cols * cell;
+            float reqD = rows * cell;
+
+            float usedW = Mathf.Min(availableW, reqW);
+            float usedD = Mathf.Min(availableD, reqD);
+
+            float centerX = (minX + maxX) * 0.5f;
+            float denseMinX = Mathf.Clamp(centerX - usedW * 0.5f, minX, maxX - usedW);
+            float denseMaxX = denseMinX + usedW;
+
+            // Empaquetado denso centrado en profundidad: mantiene el campo "en el centro" del rectángulo atrás.
+            float centerZ = (minZ + maxZ) * 0.5f;
+            float denseMinZ = Mathf.Clamp(centerZ - usedD * 0.5f, minZ, maxZ - usedD);
+            float denseMaxZ = denseMinZ + usedD;
+
+            if (denseMinX >= denseMaxX || denseMinZ >= denseMaxZ)
+                return new List<Vector2>(0);
+
+            return BuildPackedRectanglePoints(n, denseMinX, denseMaxX, denseMinZ, denseMaxZ);
         }
 
         void ApplyBackSectorSlice(ref float minX, ref float maxX)
@@ -701,6 +1140,14 @@ namespace VectorField
             float r2 = x * x + y * y;
             Vector2 result;
 
+            if (useFunctionInputs && _compiledP != null && _compiledQ != null)
+            {
+                float px = _compiledP.Evaluate(x, y);
+                float qy = _compiledQ.Evaluate(x, y);
+                result = new Vector2(px * scaleX, qy * scaleY);
+                return result;
+            }
+
             switch (formula)
             {
                 case FieldFormula.RadialOutward:   result = new Vector2(x, y); break;
@@ -768,23 +1215,47 @@ namespace VectorField
             }
 
             GameObject arrow;
+            Transform parent = GetArrowsParent();
             if (arrowPrefab != null)
-                arrow = Instantiate(arrowPrefab, worldPos, rot, transform);
+                arrow = Instantiate(arrowPrefab, worldPos, rot, parent);
             else
-                arrow = CreateSimpleArrow(worldPos, rot);
+                arrow = CreateSimpleArrow(worldPos, rot, parent);
 
             if (forceFieldColor)
                 ApplyFieldColor(arrow, forcedFieldColor);
 
-            arrow.transform.localScale = Vector3.one * scale;
-            _arrows.Add(arrow);
+            float scaleMult = Mathf.Max(0.0001f, arrowScale);
+            if (arrowPrefab == null)
+                scaleMult *= Mathf.Max(1f, simpleArrowScaleMultiplier);
+
+            // Longitud proporcional a la magnitud (estilo Stewart), con clamps.
+            float lengthFactor = 1f;
+            if (useVectorMagnitudeForLength)
+            {
+                float raw = mag * Mathf.Max(0.0001f, magnitudeToLength);
+                lengthFactor = Mathf.Clamp(raw, Mathf.Max(0.05f, minLengthFactor), Mathf.Max(minLengthFactor, maxLengthFactor));
+            }
+
+            Vector3 s = Vector3.one * (scale * scaleMult);
+            // El eje longitudinal depende del prefab: FlechaApp3 "vive" en Y; el prefab estándar/simple, en Z.
+            if (_prefabPointsUpY)
+                s.y *= lengthFactor;
+            else
+                s.z *= lengthFactor;
+
+            arrow.transform.localScale = s;
 
             Vector3 moveDir3D = new Vector3(dir2D.x, 0f, dir2D.y).normalized;
-            _animData.Add(new ArrowAnimData
+            _entries.Add(new ArrowEntry
             {
-                basePos = worldPos,
-                moveDir = moveDir3D,
-                offset  = UnityEngine.Random.Range(0f, Mathf.PI * 2f)
+                zoneKey = _generationZoneKey,
+                arrow = arrow,
+                anim = new ArrowAnimData
+                {
+                    basePos = worldPos,
+                    moveDir = moveDir3D,
+                    offset = UnityEngine.Random.Range(0f, Mathf.PI * 2f)
+                }
             });
         }
 
@@ -832,10 +1303,10 @@ namespace VectorField
             }
         }
 
-        GameObject CreateSimpleArrow(Vector3 pos, Quaternion rot)
+        GameObject CreateSimpleArrow(Vector3 pos, Quaternion rot, Transform parent)
         {
             var go = new GameObject("Flecha");
-            go.transform.SetParent(transform);
+            go.transform.SetParent(parent);
             go.transform.position = pos;
             go.transform.rotation = rot;
 
@@ -930,24 +1401,62 @@ namespace VectorField
         void PlaceDot(Vector3 pos)
         {
             var dot = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            dot.transform.SetParent(transform, false);
+            Transform parent = GetArrowsParent();
+            dot.transform.SetParent(parent, true);
             dot.transform.position   = pos;
-            dot.transform.localScale = Vector3.one * 0.08f;
+
+            float dotScale = 0.08f;
+            if (arrowPrefab == null)
+                dotScale *= Mathf.Max(1f, simpleArrowScaleMultiplier);
+            dot.transform.localScale = Vector3.one * dotScale;
             var rend = dot.GetComponent<Renderer>();
             if (rend) rend.material = new Material(Shader.Find("Unlit/Color")) { color = Color.yellow };
-            _arrows.Add(dot);
-            _animData.Add(new ArrowAnimData { basePos = pos, moveDir = Vector3.zero, offset = 0 });
+            _entries.Add(new ArrowEntry
+            {
+                zoneKey = _generationZoneKey,
+                arrow = dot,
+                anim = new ArrowAnimData { basePos = pos, moveDir = Vector3.zero, offset = 0 }
+            });
+        }
+
+        void ClearZone(string zoneKey)
+        {
+            if (string.IsNullOrEmpty(zoneKey))
+                return;
+
+            for (int i = _entries.Count - 1; i >= 0; i--)
+            {
+                if (_entries[i].zoneKey != zoneKey)
+                    continue;
+
+                if (_entries[i].arrow != null)
+                    Destroy(_entries[i].arrow);
+
+                _entries.RemoveAt(i);
+            }
         }
 
         void ClearArrows()
         {
-            foreach (var a in _arrows) if (a != null) Destroy(a);
-            _arrows.Clear();
-            _animData.Clear();
+            for (int i = 0; i < _entries.Count; i++)
+                if (_entries[i].arrow != null) Destroy(_entries[i].arrow);
+            _entries.Clear();
             // Limpiar cache de materiales/mesh estaticos al salir de Play
             _matBody  = null;
             _matTip   = null;
             _coneMesh = null;
+        }
+
+        void AnimateArrows()
+        {
+            for (int i = 0; i < _entries.Count; i++)
+            {
+                var e = _entries[i];
+                if (e.arrow == null) continue;
+                if (e.anim.moveDir.sqrMagnitude < 0.001f) continue;
+                float t = Mathf.Sin(Time.time * animSpeed + e.anim.offset) * animAmplitude;
+                e.arrow.transform.position = e.anim.basePos + e.anim.moveDir * t;
+            }
         }
     }
 }
