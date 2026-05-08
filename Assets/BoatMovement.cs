@@ -18,6 +18,7 @@ public class BoatMovement : MonoBehaviour
     [SerializeField] float rotationSpeed = 100f;
 
     private bool isPlayerOnBoat = false;
+    private bool boatMovingActive = false;
 
     private Vector2 moveInput;
     private Vector2 rotateInput;
@@ -49,7 +50,7 @@ public class BoatMovement : MonoBehaviour
 
     void Update()
     {
-        if (!isPlayerOnBoat) return;
+        if ((!isPlayerOnBoat) || (!boatMovingActive)) return;
 
         Vector2 rotationTest = rotateAction.action.ReadValue<Vector2>();
 
@@ -61,6 +62,7 @@ public class BoatMovement : MonoBehaviour
     public void EnterBoat()
     {
         isPlayerOnBoat = true;
+        boatMovingActive = true;
 
         player.transform.SetParent(boat.transform);
 
@@ -131,5 +133,10 @@ public class BoatMovement : MonoBehaviour
     {
         playerMovement.SetActive(true);
         playerTurn.SetActive(true);
+    }
+
+    private void Anchor()
+    {
+        boatMovingActive = false;
     }
 }
