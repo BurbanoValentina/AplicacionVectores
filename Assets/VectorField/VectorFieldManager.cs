@@ -132,6 +132,25 @@ namespace VectorField
         public bool    useTarget = false;
         public Vector3 target    = Vector3.zero;
 
+        [Header("Centro del campo (marcador)")]
+        public bool  showFieldCenterMarker = true;
+        public float centerMarkerRadius = 0.6f;
+        public Color centerMarkerColor = new Color(1f, 0.2f, 0.2f, 0.9f);
+
+        [Header("Centro del campo (bolita)")]
+        [Tooltip("Si se asigna, este transform define el centro del campo (origen de la formula).")]
+        public Transform fieldCenterTransform;
+        [Tooltip("Usar fieldCenterTransform para el origen de la formula y zona.")]
+        public bool useFieldCenterTransformForOrigin = true;
+        [Tooltip("Generar posiciones alrededor de la bolita (ignora el muestreo del oceano).")]
+        public bool useFieldCenterTransformForPositions = true;
+        [Tooltip("Si se generan posiciones alrededor de la bolita, ignorar filtros de isla y 'back of island'.")]
+        public bool useFieldCenterTransformIgnoreFilters = true;
+        [Tooltip("Usar fieldCenterTransform para el marcador/target del centro.")]
+        public bool useFieldCenterTransformForMarker = true;
+        [Tooltip("Si se usa fieldCenterTransform, ocultar la esfera automatica de centro.")]
+        public bool hideAutoCenterMarkerWhenUsingTransform = true;
+
         [Header("Animacion de movimiento")]
         public float animSpeed = 1.5f;
         public float animAmplitude = 0.3f;
@@ -162,6 +181,7 @@ namespace VectorField
         readonly List<ArrowEntry> _entries = new List<ArrowEntry>();
 
         Transform _arrowsParentRuntime;
+        GameObject _centerMarker;
 
         ExpressionCompiler.CompiledExpression _compiledP;
         ExpressionCompiler.CompiledExpression _compiledQ;
@@ -227,7 +247,20 @@ namespace VectorField
             List<Vector2> positions;
             Vector2 evalOrigin = zoneCenter;
 
-            if (useSingleBackRectSameAsIsland && _hasOceanBounds && islandRadius > 0.01f)
+            if (useFieldCenterTransformForOrigin && fieldCenterTransform != null)
+            {
+                var center = fieldCenterTransform.position;
+                evalOrigin = new Vector2(center.x, center.z);
+                zoneCenter = evalOrigin;
+            }
+
+            if (useFieldCenterTransformForPositions && fieldCenterTransform != null)
+            {
+                positions = useFieldCenterTransformIgnoreFilters
+                    ? BuildGrid2DNoFilters(desiredCount, fieldRadius, evalOrigin)
+                    : BuildGrid2D(desiredCount, fieldRadius, evalOrigin, islandCenter, exclusionRadius);
+            }
+            else if (useSingleBackRectSameAsIsland && _hasOceanBounds && islandRadius > 0.01f)
             {
                 float rectRadius = islandRadius * Mathf.Max(0.5f, backRectScaleMultiplier);
                 if (TryComputeBackRectSameAsIsland(_oceanBounds, islandCenter, rectRadius, backRectEdgeInset, out float minX, out float maxX, out float minZ, out float maxZ))
@@ -285,6 +318,8 @@ namespace VectorField
                 return;
             }
 
+            UpdateFieldCenterMarker(positions);
+
             int placed = 0;
             foreach (Vector2 p in positions)
             {
@@ -307,6 +342,85 @@ namespace VectorField
             }
 
             Debug.Log($"[VFM] Generado. placed={placed} desired={desiredCount} useFunctions={useFunctionInputs} backRect={useSingleBackRectSameAsIsland} oceanBounds={_hasOceanBounds}", this);
+        }
+
+        void UpdateFieldCenterMarker(List<Vector2> positions)
+        {
+            if (positions == null || positions.Count == 0)
+                return;
+
+            if (useFieldCenterTransformForMarker && fieldCenterTransform != null)
+            {
+                Vector3 centerFromTransform = fieldCenterTransform.position;
+                target = centerFromTransform;
+
+                if (hideAutoCenterMarkerWhenUsingTransform)
+                {
+                    if (_centerMarker != null)
+                        _centerMarker.SetActive(false);
+                    return;
+                }
+
+                if (_centerMarker == null)
+                    CreateCenterMarker();
+
+                _centerMarker.transform.position = centerFromTransform;
+                _centerMarker.transform.localScale = Vector3.one * Mathf.Max(0.05f, centerMarkerRadius * 2f);
+                _centerMarker.SetActive(true);
+                return;
+            }
+
+            float minX = float.PositiveInfinity;
+            float maxX = float.NegativeInfinity;
+            float minZ = float.PositiveInfinity;
+            float maxZ = float.NegativeInfinity;
+
+            for (int i = 0; i < positions.Count; i++)
+            {
+                Vector2 p = positions[i];
+                if (p.x < minX) minX = p.x;
+                if (p.x > maxX) maxX = p.x;
+                if (p.y < minZ) minZ = p.y;
+                if (p.y > maxZ) maxZ = p.y;
+            }
+
+            float centerX = (minX + maxX) * 0.5f;
+            float centerZ = (minZ + maxZ) * 0.5f;
+            float centerY = GetSpawnY(new Vector2(centerX, centerZ));
+            Vector3 centerWorld = new Vector3(centerX, centerY, centerZ);
+
+            // Guardar el centro como target para usos de formula.
+            target = centerWorld;
+
+            if (!showFieldCenterMarker)
+            {
+                if (_centerMarker != null)
+                    _centerMarker.SetActive(false);
+                return;
+            }
+
+            if (_centerMarker == null)
+                CreateCenterMarker();
+
+            _centerMarker.transform.position = centerWorld;
+            _centerMarker.transform.localScale = Vector3.one * Mathf.Max(0.05f, centerMarkerRadius * 2f);
+            _centerMarker.SetActive(true);
+        }
+
+        void CreateCenterMarker()
+        {
+            _centerMarker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            _centerMarker.name = "[VFM Field Center]";
+            var col = _centerMarker.GetComponent<Collider>();
+            if (col != null)
+                col.enabled = false;
+
+            var renderer = _centerMarker.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.sharedMaterial = new Material(Shader.Find("Standard"));
+                renderer.sharedMaterial.color = centerMarkerColor;
+            }
         }
 
         bool EnsureCompiledFunctions(out string error)
@@ -753,6 +867,41 @@ namespace VectorField
                 if (!IsPointValidForSpawn(pt))
                     continue;
 
+                pts.Add(pt);
+            }
+
+            return pts;
+        }
+
+        List<Vector2> BuildGrid2DNoFilters(int n, float radius, Vector2 center)
+        {
+            int cols = Mathf.Max(1, Mathf.RoundToInt(Mathf.Sqrt(n)));
+            int rows = Mathf.Max(1, Mathf.CeilToInt((float)n / cols));
+            float stepX = cols > 1 ? (2f * radius) / (cols - 1) : 0f;
+            float stepZ = rows > 1 ? (2f * radius) / (rows - 1) : 0f;
+
+            var pts = new List<Vector2>(n);
+            for (int r = 0; r < rows && pts.Count < n; r++)
+                for (int c = 0; c < cols && pts.Count < n; c++)
+                {
+                    float x = (cols > 1 ? -radius + c * stepX : 0f) + center.x;
+                    float z = (rows > 1 ? -radius + r * stepZ : 0f) + center.y;
+                    var pt = new Vector2(x, z);
+                    if (!IsPointValidForSpawn(pt))
+                        continue;
+                    pts.Add(pt);
+                }
+
+            int safety = 0;
+            int maxAttempts = Mathf.Max(n * 40, 4000);
+            while (pts.Count < n && safety < maxAttempts)
+            {
+                safety++;
+                float x = UnityEngine.Random.Range(-radius, radius) + center.x;
+                float z = UnityEngine.Random.Range(-radius, radius) + center.y;
+                var pt = new Vector2(x, z);
+                if (!IsPointValidForSpawn(pt))
+                    continue;
                 pts.Add(pt);
             }
 

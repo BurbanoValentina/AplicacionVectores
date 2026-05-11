@@ -1875,6 +1875,15 @@ MonoBehaviour:
   backRectScaleMultiplier: 1.5
   useTarget: 1
   target: {x: 10, y: 0, z: 10}
+  showFieldCenterMarker: 1
+  centerMarkerRadius: 0.6
+  centerMarkerColor: {r: 1, g: 0.2, b: 0.2, a: 0.9}
+  fieldCenterTransform: {fileID: 0}
+  useFieldCenterTransformForOrigin: 1
+  useFieldCenterTransformForPositions: 1
+  useFieldCenterTransformIgnoreFilters: 1
+  useFieldCenterTransformForMarker: 1
+  hideAutoCenterMarkerWhenUsingTransform: 1
   animSpeed: 1.5
   animAmplitude: 0.3
   useVectorMagnitudeForLength: 1

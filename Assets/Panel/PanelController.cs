@@ -545,8 +545,43 @@ namespace VectorFieldUI
             var dropdown = dropGO.GetComponent<TMP_Dropdown>();
             dropdown.ClearOptions();
             dropdown.value = 0;
+            FixDropdownTemplate(dropdown);
 
             return dropdown;
+        }
+
+        void FixDropdownTemplate(TMP_Dropdown dropdown)
+        {
+            if (!dropdown)
+                return;
+
+            if (dropdown.template == null)
+            {
+                var template = dropdown.transform.Find("Template") as RectTransform;
+                if (template == null)
+                {
+                    var all = dropdown.GetComponentsInChildren<RectTransform>(true);
+                    for (int i = 0; i < all.Length; i++)
+                    {
+                        if (all[i] != null && all[i].name == "Template")
+                        {
+                            template = all[i];
+                            break;
+                        }
+                    }
+                }
+
+                dropdown.template = template;
+            }
+
+            if (dropdown.template != null)
+            {
+                var cg = dropdown.template.GetComponent<CanvasGroup>();
+                if (cg == null)
+                    dropdown.template.gameObject.AddComponent<CanvasGroup>();
+
+                dropdown.template.gameObject.SetActive(false);
+            }
         }
 
         void RemoveConflictingTrackedRaycasters()
@@ -598,14 +633,24 @@ namespace VectorFieldUI
                 fieldManager.activeZoneKey = string.Empty;
                 fieldManager.forceAtLeastNVectors = false;
                 fieldManager.forcedMinimumVectorCount = 0;
-                fieldManager.onlyBackOfIsland = false;
+                fieldManager.onlyBackOfIsland = true;
                 fieldManager.sampleAcrossEntireOcean = true;
                 fieldManager.autoDetectOceanBounds = true;
                 fieldManager.autoDetectIslandFromScene = true;
-                fieldManager.useSingleBackRectSameAsIsland = true;
-                fieldManager.backRectEdgeInset = 0.5f;
-                fieldManager.useDensePacking = true;
-                fieldManager.desiredCellSize = 0.60f;
+                fieldManager.useSingleBackRectSameAsIsland = false;
+                fieldManager.useBackPackedRectangle = true;
+                fieldManager.packedRectHorizontalPadding = 0f;
+                fieldManager.packedRectBackPadding = 0f;
+                fieldManager.packedRectFrontPadding = 0f;
+
+                // Expandir todo el campo hacia atras hasta el borde de la isla.
+                fieldManager.backEndOffset = 0f;
+
+                // Cubrir el rectangulo completo (no centrar denso).
+                fieldManager.useDensePacking = false;
+
+                // Apuntar al centro calculado del campo.
+                fieldManager.formula = FieldFormula.TargetPoint;
 
                 // En esta escena el agua no siempre tiene collider; el filtro por raycast puede eliminar todos los puntos.
                 fieldManager.excludeSolidObjectsOverWater = false;
