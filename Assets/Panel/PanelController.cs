@@ -35,6 +35,11 @@ namespace VectorFieldUI
         public Button btnGenerate;
         public Button btnReset;
         public Button btnDelete;
+        public Button btnGenerateDucks;
+
+        [Header("Patos")]
+        public DuckFieldSpawner duckSpawner;
+        public float ducksEnableDelaySeconds = 5f;
 
         [Header("Etiqueta (timer)")]
         public TextMeshProUGUI statusLabel;
@@ -106,11 +111,19 @@ namespace VectorFieldUI
             {
                 if (btnGenerate != null) btnGenerate.onClick.AddListener(OnGenerate);
                 if (btnDelete != null)   btnDelete.onClick.AddListener(OnDelete);
+                if (btnGenerateDucks != null) btnGenerateDucks.onClick.AddListener(OnGenerateDucks);
             }
             catch (System.Exception ex)
             {
                 Debug.LogError($"Error al asignar listeners de botones: {ex.Message}", this);
             }
+
+            if (duckSpawner == null)
+                duckSpawner = FindFirstObjectByType<DuckFieldSpawner>();
+            if (duckSpawner == null)
+                duckSpawner = new GameObject("DuckFieldSpawner").AddComponent<DuckFieldSpawner>();
+
+            SetDucksButtonEnabled(false);
 
             SetTimer(COUNTDOWN_SECONDS);
         }
@@ -253,6 +266,29 @@ namespace VectorFieldUI
                     buttonText.fontStyle = FontStyles.Bold;
                     buttonText.color = Color.white;
                 }
+            }
+
+            if (btnGenerateDucks != null)
+            {
+                var buttonText = btnGenerateDucks.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (buttonText != null)
+                {
+                    buttonText.text = "GENERAR PATOS";
+                    buttonText.fontStyle = FontStyles.Bold;
+                    buttonText.color = Color.black;
+                }
+
+                var image = btnGenerateDucks.GetComponent<Image>();
+                if (image != null)
+                    image.color = new Color(0.96f, 0.80f, 0.12f, 1f);
+
+                var colors = btnGenerateDucks.colors;
+                colors.normalColor = new Color(0.96f, 0.80f, 0.12f, 1f);
+                colors.highlightedColor = new Color(1.00f, 0.86f, 0.22f, 1f);
+                colors.pressedColor = new Color(0.86f, 0.70f, 0.05f, 1f);
+                colors.selectedColor = colors.highlightedColor;
+                colors.colorMultiplier = 1f;
+                btnGenerateDucks.colors = colors;
             }
         }
 
@@ -430,6 +466,9 @@ namespace VectorFieldUI
 
             if (!btnDelete)
                 btnDelete = CreateRuntimeButton(content, "btnDelete", "Eliminar Campo Vectorial", new Color(0.75f, 0.15f, 0.15f, 1f));
+
+            if (!btnGenerateDucks)
+                btnGenerateDucks = CreateRuntimeButton(content, "btnGenerateDucks", "Generar Patos", new Color(0.96f, 0.80f, 0.12f, 1f));
 
             // Fuerza el refresco de layout para que los nuevos controles sean visibles de inmediato.
             if (content is RectTransform rt)
@@ -682,6 +721,7 @@ namespace VectorFieldUI
                 if (inputScaleY) inputScaleY.text = string.Empty;
 
                 if (fieldManager) fieldManager.DeleteField();
+                SetDucksButtonEnabled(false);
                 SetTimer(COUNTDOWN_SECONDS);
             }
             catch (System.Exception ex)
@@ -689,6 +729,24 @@ namespace VectorFieldUI
                 Debug.LogError($"Error al eliminar campo: {ex.Message}", this);
                 SetStatus($"ERROR al eliminar: {ex.Message}");
             }
+        }
+
+        void OnGenerateDucks()
+        {
+            if (duckSpawner == null)
+            {
+                SetStatus("ERROR: DuckFieldSpawner no encontrado.");
+                return;
+            }
+
+            duckSpawner.fieldManager = fieldManager;
+            duckSpawner.GenerateDucks();
+        }
+
+        void SetDucksButtonEnabled(bool enabled)
+        {
+            if (btnGenerateDucks != null)
+                btnGenerateDucks.interactable = enabled;
         }
 
         void SetStatus(string msg)
@@ -741,7 +799,17 @@ namespace VectorFieldUI
                     SetStatus(err);
             }
 
+            if (duckSpawner != null)
+                StartCoroutine(EnableDucksAfterDelay());
+
             _countdown = null;
+        }
+
+        System.Collections.IEnumerator EnableDucksAfterDelay()
+        {
+            SetDucksButtonEnabled(false);
+            yield return new WaitForSeconds(Mathf.Max(0f, ducksEnableDelaySeconds));
+            SetDucksButtonEnabled(true);
         }
     }
 }

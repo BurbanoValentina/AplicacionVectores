@@ -3387,6 +3387,9 @@ MonoBehaviour:
   btnGenerate: {fileID: 4473897142007175020}
   btnReset: {fileID: 0}
   btnDelete: {fileID: 724419853915532198}
+  btnGenerateDucks: {fileID: 0}
+  duckSpawner: {fileID: 0}
+  ducksEnableDelaySeconds: 5
   statusLabel: {fileID: 8772826401366166637}
   applyStyleInEditMode: 1
   panelSize: {x: 480, y: 520}

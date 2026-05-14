@@ -30,7 +30,8 @@ internal static class DisableXriAnalyticsHooks
                 var declaringType = callback.Method.DeclaringType;
                 var fullName = declaringType?.FullName ?? string.Empty;
 
-                if (!fullName.Contains("UnityEditor.XR.Interaction.Toolkit.Analytics.Hooks", StringComparison.Ordinal))
+                if (!fullName.Contains("UnityEditor.XR.Interaction.Toolkit.Analytics.Hooks", StringComparison.Ordinal)
+                    && !fullName.Contains("UnityEditor.XR.Interaction.Toolkit.Analytics.XRInteractionToolkitAnalytics", StringComparison.Ordinal))
                     continue;
 
                 if (callback is Action<PlayModeStateChange> playModeCallback)

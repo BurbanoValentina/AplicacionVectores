@@ -151,6 +151,8 @@ namespace VectorField
         [Tooltip("Si se usa fieldCenterTransform, ocultar la esfera automatica de centro.")]
         public bool hideAutoCenterMarkerWhenUsingTransform = true;
 
+        const string FieldCenterObjectName = "VFM FIELD CENTER";
+
         [Header("Animacion de movimiento")]
         public float animSpeed = 1.5f;
         public float animAmplitude = 0.3f;
@@ -192,6 +194,8 @@ namespace VectorField
         bool _prefabPointsUpY = false;
         bool _hasOceanBounds = false;
         Bounds _oceanBounds;
+        bool _hasIslandBounds = false;
+        Bounds _islandBounds;
 
         struct ArrowAnimData
         {
@@ -208,8 +212,88 @@ namespace VectorField
             AnimateArrows();
         }
 
+        void Awake()
+        {
+            TryResolveFieldCenterTransform();
+        }
+
+        bool TryResolveFieldCenterTransform()
+        {
+            if (fieldCenterTransform != null)
+                return true;
+
+            var go = GameObject.Find(FieldCenterObjectName);
+            if (go == null)
+                go = GameObject.Find("[VFM Field Center]");
+            if (go == null)
+                go = GameObject.Find("VFM Field Center");
+            if (go == null)
+                return false;
+
+            fieldCenterTransform = go.transform;
+            useFieldCenterTransformForOrigin = true;
+            useFieldCenterTransformForMarker = true;
+            useFieldCenterTransformForPositions = true;
+            useFieldCenterTransformIgnoreFilters = true;
+            return true;
+        }
+
+        public Vector3 GetFieldCenterWorld()
+        {
+            if (fieldCenterTransform != null)
+                return fieldCenterTransform.position;
+
+            return new Vector3(zoneCenter.x, transform.position.y, zoneCenter.y);
+        }
+
+        public bool TryGetOceanBounds(out Bounds bounds)
+        {
+            if (!_hasOceanBounds)
+                RefreshOceanBoundsFromScene();
+
+            if (_hasOceanBounds)
+            {
+                bounds = _oceanBounds;
+                return true;
+            }
+
+            bounds = default;
+            return false;
+        }
+
+        public bool TryGetIslandBounds(out Bounds bounds)
+        {
+            if (!_hasIslandBounds)
+                RefreshIslandBoundsFromScene();
+
+            if (_hasIslandBounds)
+            {
+                bounds = _islandBounds;
+                return true;
+            }
+
+            bounds = default;
+            return false;
+        }
+
+        public Vector2 GetFieldDirection(Vector3 worldPos)
+        {
+            TryResolveFieldCenterTransform();
+
+            Vector2 origin = zoneCenter;
+            if (useFieldCenterTransformForOrigin && fieldCenterTransform != null)
+            {
+                var center = fieldCenterTransform.position;
+                origin = new Vector2(center.x, center.z);
+            }
+
+            return EvaluateFormula(new Vector2(worldPos.x, worldPos.z), origin);
+        }
+
         public void GenerateField()
         {
+            TryResolveFieldCenterTransform();
+
             string zoneKey = GetZoneKey();
             _generationZoneKey = zoneKey;
 
@@ -1168,20 +1252,24 @@ namespace VectorField
 
         void RefreshIslandBoundsFromScene()
         {
+            _hasIslandBounds = false;
             if (!autoDetectIslandFromScene)
                 return;
 
-            if (!TryDetectIslandBounds(out Vector2 detectedCenter, out float detectedRadius))
+            if (!TryDetectIslandBounds(out Vector2 detectedCenter, out float detectedRadius, out Bounds detectedBounds))
                 return;
 
             islandCenter = detectedCenter;
             islandRadius = detectedRadius;
+            _islandBounds = detectedBounds;
+            _hasIslandBounds = true;
         }
 
-        bool TryDetectIslandBounds(out Vector2 center, out float radius)
+        bool TryDetectIslandBounds(out Vector2 center, out float radius, out Bounds bounds)
         {
             center = islandCenter;
             radius = islandRadius;
+            bounds = default;
 
             var scene = SceneManager.GetActiveScene();
             if (!scene.IsValid() || !scene.isLoaded)
@@ -1192,7 +1280,7 @@ namespace VectorField
                 return false;
 
             bool found = false;
-            Bounds bounds = new Bounds();
+            Bounds localBounds = new Bounds();
 
             for (int i = 0; i < roots.Length; i++)
             {
@@ -1222,12 +1310,12 @@ namespace VectorField
 
                         if (!found)
                         {
-                            bounds = r.bounds;
+                            localBounds = r.bounds;
                             found = true;
                         }
                         else
                         {
-                            bounds.Encapsulate(r.bounds);
+                            localBounds.Encapsulate(r.bounds);
                         }
                     }
 
@@ -1243,12 +1331,12 @@ namespace VectorField
 
                         if (!found)
                         {
-                            bounds = c.bounds;
+                            localBounds = c.bounds;
                             found = true;
                         }
                         else
                         {
-                            bounds.Encapsulate(c.bounds);
+                            localBounds.Encapsulate(c.bounds);
                         }
                     }
                 }
@@ -1257,8 +1345,9 @@ namespace VectorField
             if (!found)
                 return false;
 
-            center = new Vector2(bounds.center.x, bounds.center.z);
-            radius = Mathf.Max(bounds.extents.x, bounds.extents.z);
+            bounds = localBounds;
+            center = new Vector2(localBounds.center.x, localBounds.center.z);
+            radius = Mathf.Max(localBounds.extents.x, localBounds.extents.z);
             return radius > 0.01f;
         }
 
