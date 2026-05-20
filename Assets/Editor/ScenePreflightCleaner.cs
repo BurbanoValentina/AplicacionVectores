@@ -7,7 +7,7 @@ using UnityEngine;
 /// Limpia referencias de scripts faltantes antes de entrar a Play.
 /// También deja un solo AudioListener activo para evitar spam en consola.
 /// </summary>
-[InitializeOnLoad]
+//[InitializeOnLoad]
 public static class ScenePreflightCleaner
 {
     static ScenePreflightCleaner()

@@ -196,6 +196,9 @@ namespace VectorField
         Bounds _oceanBounds;
         bool _hasIslandBounds = false;
         Bounds _islandBounds;
+        
+        //Punto de evaluación de referencia para el barco, no afecta al resto del código.
+        private Vector2 GlobalEvalOrigin;
 
         struct ArrowAnimData
         {
@@ -386,6 +389,7 @@ namespace VectorField
                     float minZ = maxZ - (half * 2f);
 
                     evalOrigin = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
+                    Debug.Log("El punto de evaluación de origen es:" + evalOrigin);
                     zoneCenter = evalOrigin;
 
                     positions = useDensePacking
@@ -405,6 +409,7 @@ namespace VectorField
             UpdateFieldCenterMarker(positions);
 
             int placed = 0;
+            GlobalEvalOrigin = evalOrigin; //Se guarda para el uso del barco.
             foreach (Vector2 p in positions)
             {
                 Vector2 dir = EvaluateFormula(p, evalOrigin);
@@ -1369,7 +1374,7 @@ namespace VectorField
             return n.Contains("boat") || n.Contains("ship");
         }
 
-        Vector2 EvaluateFormula(Vector2 p, Vector2 localOrigin)
+        public Vector2 EvaluateFormula(Vector2 p, Vector2 localOrigin)
         {
             // Las formulas se calculan respecto al centro de la zona activa,
             // para que cada zona se comporte de forma coherente.
@@ -1405,6 +1410,12 @@ namespace VectorField
             }
 
             return new Vector2(result.x * scaleX, result.y * scaleY);
+        }
+
+        //Se usa para que otras clases obtengan el punto de origen con el que se evaluó el campo.
+        public Vector2 GetEvalOrigin()
+        {
+        return GlobalEvalOrigin;
         }
 
         void PlaceArrow(Vector3 worldPos, Vector2 dir2D, int totalCount)
