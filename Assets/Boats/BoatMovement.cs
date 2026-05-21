@@ -87,11 +87,6 @@ public class BoatMovement : MonoBehaviour
     void Update()
     {
         if ((!isPlayerOnBoat) || (!boatMovingActive)) return;
-
-<<<<<<< HEAD:Assets/Boats/BoatMovement.cs
-        Vector2 rotationTest = rotateAction.action.ReadValue<Vector2>();
-=======
->>>>>>> 6845f3b (Implementacion DropDrown y corregir las evaluaciones de los botes, correcion en errores):Assets/BoatMovement.cs
         MoveBoat();
     }
 
@@ -210,15 +205,11 @@ public class BoatMovement : MonoBehaviour
     {
         boatMovingActive = false;
     }
-<<<<<<< HEAD:Assets/Boats/BoatMovement.cs
 
     private Vector2 GetOriginFromManager()
     {
-        if(manager != null)
+        if (manager != null)
             return manager.GetEvalOrigin();
         return Vector2.zero;
     }
 }
-=======
-}
->>>>>>> 6845f3b (Implementacion DropDrown y corregir las evaluaciones de los botes, correcion en errores):Assets/BoatMovement.cs
