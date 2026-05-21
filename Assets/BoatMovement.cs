@@ -1,4 +1,3 @@
-using ExitGames.Client.Photon.StructWrapping;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -17,16 +16,6 @@ public class BoatMovement : MonoBehaviour
     [Header("Boat Settings")]
     [SerializeField] float moveSpeed = 5f;
     [SerializeField] float rotationSpeed = 100f;
-
-    [Header("Field Settings")]
-
-    [SerializeField] float fieldEffectStrength = 2f;
-    private GameObject VFM; //Referencia al VectorFieldManager para obtener el origen de evaluación.
-    private VectorField.VectorFieldManager manager;
-    private Vector2 evalOrigin = Vector2.zero; // Origen para evaluar el campo vectorial
-    
-    private bool boatAffectedByField = false;
-
 
     private bool isPlayerOnBoat = false;
     private bool boatMovingActive = false;
@@ -77,16 +66,10 @@ public class BoatMovement : MonoBehaviour
         }
     }
 
-    void Start()
-    {
-        VFM = GameObject.Find("VFM");
-        manager = VFM.GetComponent<VectorField.VectorFieldManager>();
-    }
-    
-
     void Update()
     {
         if ((!isPlayerOnBoat) || (!boatMovingActive)) return;
+
         MoveBoat();
     }
 
@@ -155,16 +138,9 @@ public class BoatMovement : MonoBehaviour
         // Rotación
         float rotationAmount = rotateInput.sqrMagnitude > 0f ? rotateInput.x : moveInput.x;
 
-        //Se calcula el movimiento del barco
-        Vector3 BoatMovement = Vector3.right * moveAmount * moveSpeed * Time.deltaTime;
-        //Se calcula la fuerza del campo vectorial en la posición del barco.
-        Vector3 fieldForce = manager.EvaluateFormula(boat.transform.position, GetOriginFromManager()) * fieldEffectStrength;
-        //Se suman las fuerzas calculadas para obtener el movimiento final del barco.
-        Vector3 finalMovement = BoatMovement + fieldForce;
-
         // Mover en la dirección frontal del barco
         boat.transform.Translate(
-            finalMovement,
+            Vector3.right * moveAmount * moveSpeed * Time.deltaTime,
             Space.Self
         );
 
@@ -204,12 +180,5 @@ public class BoatMovement : MonoBehaviour
     private void Anchor()
     {
         boatMovingActive = false;
-    }
-
-    private Vector2 GetOriginFromManager()
-    {
-        if (manager != null)
-            return manager.GetEvalOrigin();
-        return Vector2.zero;
     }
 }
