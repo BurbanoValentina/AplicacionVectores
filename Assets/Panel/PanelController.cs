@@ -25,11 +25,11 @@ namespace VectorFieldUI
         public float        waterRadius = 45f;
         public Vector2      waterCenter = Vector2.zero;
 
-        [Header("Funciones f(x,y) (reusamos estos inputs)")]
+        [Header("Selección de función (dropdown)")]
         [Tooltip("Primera función P(x,y)")]
-        public TMP_InputField inputScaleX;
+        public TMP_Dropdown inputScaleX;
         [Tooltip("Segunda función Q(x,y)")]
-        public TMP_InputField inputScaleY;
+        public TMP_Dropdown inputScaleY;
 
         [Header("Botones")]
         public Button btnGenerate;
@@ -76,6 +76,7 @@ namespace VectorFieldUI
 
             // En modo edición: ocultar panel legacy y asegurar título/scroll/layout.
             ApplyPanelVisualStyle();
+            ApplyPanelLayoutTweaks();
         }
 
         void OnValidate()
@@ -162,6 +163,8 @@ namespace VectorFieldUI
 
         void ApplyPanelVisualStyle()
         {
+            HideLegacyFunctionInputFields();
+
             // Ocultar controles legacy (formula/zona/reset). Conservamos SOLO el dropdown de cantidad.
             if (dropCount) dropCount.gameObject.SetActive(true);
             if (dropFormula) dropFormula.gameObject.SetActive(false);
@@ -202,13 +205,13 @@ namespace VectorFieldUI
                 desc.gameObject.SetActive(false);
             }
 
-            // Labels de los inputs (reusamos InputScaleX/Y)
+            // Labels de los dropdowns
             SetLabelTextIfExists("InputScaleX_Label", "Primera funcion f(x,y):");
             SetLabelTextIfExists("InputScaleY_Label", "Segunda funcion f(x,y):");
 
-            // Configurar inputs como texto libre
-            ConfigureFunctionInput(inputScaleX, "x+2");
-            ConfigureFunctionInput(inputScaleY, "1");
+            // Configurar dropdowns con las opciones de eje
+            ConfigureFunctionDropdown(inputScaleX, new[] { "X", "-X", "-Y", "Y", "-X-Y" }, 0);
+            ConfigureFunctionDropdown(inputScaleY, new[] { "Y", "-Y", "X", "-X", "x-y" }, 0);
 
             // Timer visible
             if (statusLabel == null)
@@ -289,6 +292,20 @@ namespace VectorFieldUI
                 colors.selectedColor = colors.highlightedColor;
                 colors.colorMultiplier = 1f;
                 btnGenerateDucks.colors = colors;
+            }
+        }
+
+        void HideLegacyFunctionInputFields()
+        {
+            var inputs = GetComponentsInChildren<TMP_InputField>(true);
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                var input = inputs[i];
+                if (input == null)
+                    continue;
+
+                if (input.name == "InputScaleX" || input.name == "InputScaleY")
+                    input.gameObject.SetActive(false);
             }
         }
 
@@ -390,16 +407,19 @@ namespace VectorFieldUI
             return null;
         }
 
-        void ConfigureFunctionInput(TMP_InputField input, string fallback)
+        void ConfigureFunctionDropdown(TMP_Dropdown dropdown, string[] options, int defaultIndex)
         {
-            if (input == null)
+            if (dropdown == null)
                 return;
 
-            input.contentType = TMP_InputField.ContentType.Standard;
-            input.characterLimit = 64;
+            dropdown.ClearOptions();
+            var opts = new List<TMP_Dropdown.OptionData>();
+            for (int i = 0; i < options.Length; i++)
+                opts.Add(new TMP_Dropdown.OptionData(options[i]));
+            dropdown.AddOptions(opts);
 
-            if (string.IsNullOrWhiteSpace(input.text))
-                input.text = fallback;
+            int safeIdx = Mathf.Clamp(defaultIndex, 0, opts.Count - 1);
+            dropdown.SetValueWithoutNotify(safeIdx);
         }
 
         TextMeshProUGUI FindTitleLabel()
@@ -453,10 +473,10 @@ namespace VectorFieldUI
             if (!content) return;
 
             if (!inputScaleX)
-                inputScaleX = CreateRuntimeLabeledInputField(content, source, "InputScaleX", "Multiplicador X");
+                inputScaleX = CreateRuntimeAxisDropdown(content, source, "InputScaleX");
 
             if (!inputScaleY)
-                inputScaleY = CreateRuntimeLabeledInputField(content, source, "InputScaleY", "Multiplicador Y");
+                inputScaleY = CreateRuntimeAxisDropdown(content, source, "InputScaleY");
 
             // Ya no usamos zonas / dropdowns en modo Stewart
 
@@ -521,47 +541,48 @@ namespace VectorFieldUI
             return btn;
         }
 
-        TMP_InputField CreateRuntimeLabeledInputField(Transform parent, TMP_Dropdown source, string objName, string labelText)
+        TMP_Dropdown CreateRuntimeAxisDropdown(Transform parent, TMP_Dropdown templateSource, string objName)
         {
+            // label
             var labelGO = new GameObject(objName + "_Label", typeof(RectTransform), typeof(LayoutElement), typeof(TextMeshProUGUI));
             labelGO.transform.SetParent(parent, false);
-
-            var labelLayout = labelGO.GetComponent<LayoutElement>();
-            labelLayout.preferredHeight = 24f;
-
+            var ll = labelGO.GetComponent<LayoutElement>();
+            ll.preferredHeight = 24f;
             var labelTextComp = labelGO.GetComponent<TextMeshProUGUI>();
-            labelTextComp.text = labelText;
+            labelTextComp.text = objName == "InputScaleX" ? "Primera funcion f(x,y):" : "Segunda funcion f(x,y):";
             labelTextComp.fontSize = 18;
             labelTextComp.color = new Color(0.85f, 0.85f, 0.85f);
             labelTextComp.fontStyle = FontStyles.Bold;
 
-            // Crear InputField basado en el Dropdown como referencia
-            var inputGO = new GameObject(objName, typeof(RectTransform), typeof(LayoutElement), typeof(TMP_InputField));
-            inputGO.transform.SetParent(parent, false);
+            // dropdown
+            var dropGO = new GameObject(objName, typeof(RectTransform), typeof(LayoutElement), typeof(CanvasRenderer), typeof(Image), typeof(TMP_Dropdown));
+            dropGO.transform.SetParent(parent, false);
+            var dle = dropGO.GetComponent<LayoutElement>();
+            dle.preferredHeight = 36f;
+            dle.flexibleWidth = 1f;
 
-            var inputLayout = inputGO.GetComponent<LayoutElement>();
-            inputLayout.preferredHeight = 36f;
+            var bg = dropGO.GetComponent<Image>();
+            bg.color = new Color(0.15f, 0.15f, 0.15f, 0.9f);
 
-            var inputField = inputGO.GetComponent<TMP_InputField>();
-            inputField.text = "1";
-            inputField.characterLimit = 10;
-            inputField.contentType = TMP_InputField.ContentType.DecimalNumber;
+            var dropdown = dropGO.GetComponent<TMP_Dropdown>();
+            string[] firstFuncOpts  = { "X", "-X", "-Y", "Y", "-X-Y" };
+            string[] secondFuncOpts = { "Y", "-Y", "X", "-X", "x-y" };
+            string[] opts = objName == "InputScaleX" ? firstFuncOpts : secondFuncOpts;
+            foreach (var o in opts) dropdown.options.Add(new TMP_Dropdown.OptionData(o));
+            dropdown.SetValueWithoutNotify(0);
 
-            // Crear visual del input field
-            var image = inputGO.AddComponent<Image>();
-            image.color = new Color(0.15f, 0.15f, 0.15f, 0.8f);
+            // template required for TMP_Dropdown to open
+            if (templateSource != null && templateSource.template != null)
+            {
+                var tmpl = Instantiate(templateSource.template, dropGO.transform);
+                tmpl.name = "Template";
+                tmpl.gameObject.SetActive(false);
+                dropdown.template = tmpl as RectTransform;
+                var cg = tmpl.GetComponent<CanvasGroup>();
+                if (cg == null) tmpl.gameObject.AddComponent<CanvasGroup>();
+            }
 
-            var textGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
-            textGO.transform.SetParent(inputGO.transform, false);
-            var textComp = textGO.GetComponent<TextMeshProUGUI>();
-            textComp.text = "1";
-            textComp.fontSize = 20;
-            textComp.color = Color.white;
-
-            inputField.textComponent = textComp;
-            inputField.targetGraphic = image;
-
-            return inputField;
+            return dropdown;
         }
 
         TMP_Dropdown CreateRuntimeLabeledDropdown(Transform parent, TMP_Dropdown source, string objName, string labelText)
@@ -655,8 +676,8 @@ namespace VectorFieldUI
 
             try
             {
-                string p = inputScaleX != null ? (inputScaleX.text ?? string.Empty).Trim() : string.Empty;
-                string q = inputScaleY != null ? (inputScaleY.text ?? string.Empty).Trim() : string.Empty;
+                string p = GetSelectedExpression(inputScaleX);
+                string q = GetSelectedExpression(inputScaleY);
 
                 if (string.IsNullOrWhiteSpace(p) || string.IsNullOrWhiteSpace(q))
                 {
@@ -711,14 +732,23 @@ namespace VectorFieldUI
             }
         }
 
+        string GetSelectedExpression(TMP_Dropdown dropdown)
+        {
+            if (dropdown == null || dropdown.options == null || dropdown.options.Count == 0)
+                return "x";
+
+            int idx = Mathf.Clamp(dropdown.value, 0, dropdown.options.Count - 1);
+            return dropdown.options[idx].text;
+        }
+
         void OnDelete()
         {
             try
             {
                 StopCountdown();
 
-                if (inputScaleX) inputScaleX.text = string.Empty;
-                if (inputScaleY) inputScaleY.text = string.Empty;
+                if (inputScaleX != null) inputScaleX.SetValueWithoutNotify(0);
+                if (inputScaleY != null) inputScaleY.SetValueWithoutNotify(0);
 
                 if (fieldManager) fieldManager.DeleteField();
                 SetDucksButtonEnabled(false);

@@ -67,6 +67,7 @@ ExportedObj/
 *.apk
 *.aab
 *.unitypackage
+*.unitypackage.meta
 *.app
 *.log
 
@@ -86,6 +87,8 @@ crashlytics-build.properties
 [Aa]ssets/[Tt]ext[Mm]esh [Pp]ro/Examples & Extras.meta
 [Aa]ssets/_Recovery/
 [Aa]ssets/_Recovery.meta
+[Aa]ssets/[Ss]amples/XR Interaction Toolkit/3.2.2/XR Interaction Simulator/
+[Aa]ssets/[Ss]amples/XR Interaction Toolkit/3.2.2/XR Interaction Simulator.meta
 unity_batch.log
 
 # ============================================================================

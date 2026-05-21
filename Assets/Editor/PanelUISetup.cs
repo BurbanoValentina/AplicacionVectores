@@ -11,8 +11,43 @@ using VectorFieldUI;
 /// to the Panel prefab and wires them to PanelController.
 /// Run once: Menu → Panel → Add Missing Dropdowns
 /// </summary>
+[InitializeOnLoad]
 public class PanelUISetup
 {
+    static bool s_EditModeFixQueued;
+
+    static PanelUISetup()
+    {
+        QueueEditModePanelFix();
+        EditorSceneManager.sceneOpened += (_, __) => QueueEditModePanelFix();
+    }
+
+    static void QueueEditModePanelFix()
+    {
+        if (s_EditModeFixQueued)
+            return;
+
+        s_EditModeFixQueued = true;
+        EditorApplication.delayCall += RunEditModePanelFix;
+    }
+
+    static void RunEditModePanelFix()
+    {
+        s_EditModeFixQueued = false;
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+            return;
+
+        try
+        {
+            FixPanelPrefabAll();
+            FixPanelInOpenScenes();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[PanelSetup] No se pudo refrescar el panel en modo edicion: {ex.Message}");
+        }
+    }
+
     [MenuItem("Panel/Add Missing Dropdowns")]
     public static void AddMissingDropdowns()
     {
@@ -88,20 +123,21 @@ public class PanelUISetup
         }
 
         Transform content = existingDrop.transform.parent;
+        changed |= RemoveLegacyFunctionInputFields(content);
 
-        // Reemplazar dropdowns con inputs de texto para X/Y
+        // Reemplazar input fields por dropdowns
         if (pc.inputScaleX == null)
         {
-            pc.inputScaleX = FindOrCreateInputField(content, "InputScaleX", "Multiplicador X");
+            pc.inputScaleX = FindOrCreateAxisDropdown(content, "InputScaleX", "Primera funcion f(x,y):");
             changed = true;
-            Debug.Log("[PanelSetup] inputScaleX created/linked.");
+            Debug.Log("[PanelSetup] inputScaleX dropdown created/linked.");
         }
 
         if (pc.inputScaleY == null)
         {
-            pc.inputScaleY = FindOrCreateInputField(content, "InputScaleY", "Multiplicador Y");
+            pc.inputScaleY = FindOrCreateAxisDropdown(content, "InputScaleY", "Segunda funcion f(x,y):");
             changed = true;
-            Debug.Log("[PanelSetup] inputScaleY created/linked.");
+            Debug.Log("[PanelSetup] inputScaleY dropdown created/linked.");
         }
 
         if (pc.dropZone == null)
@@ -184,47 +220,35 @@ public class PanelUISetup
         var formulaLabel = EnsureLabelForDropdown(content, pc.dropFormula, "FormulaFunctionLabel", "Fórmula", ref changed);
         var formulaDesc = EnsureDescriptionSmall(content, "FormulaDesc", "Selecciona el patrón de dirección de los vectores", ref changed);
         
-        var scaleXLabel = EnsureLabelForInputField(content, pc.inputScaleX, "InputScaleX_Label", "Escala X", ref changed);
-        var scaleXDesc = EnsureDescriptionSmall(content, "ScaleXDesc", "Multiplicador para el eje X (ingresa cualquier número)", ref changed);
+        var scaleXLabel = EnsureLabelForDropdown(content, pc.inputScaleX, "InputScaleX_Label", "Primera funcion f(x,y):", ref changed);
+        var scaleXDesc = EnsureDescriptionSmall(content, "ScaleXDesc", "Opciones: X, -X, -Y, Y, -X-Y", ref changed);
         
-        var scaleYLabel = EnsureLabelForInputField(content, pc.inputScaleY, "InputScaleY_Label", "Escala Y", ref changed);
-        var scaleYDesc = EnsureDescriptionSmall(content, "ScaleYDesc", "Multiplicador para el eje Y (ingresa cualquier número)", ref changed);
-        
-        var zoneLabel = EnsureLabelForDropdown(content, pc.dropZone, "DropdownZone_Label", "Zona", ref changed);
-        var zoneDesc = EnsureDescriptionSmall(content, "ZoneDesc", "Elige el área del océano donde mostrar los vectores", ref changed);
+        var scaleYLabel = EnsureLabelForDropdown(content, pc.inputScaleY, "InputScaleY_Label", "Segunda funcion f(x,y):", ref changed);
+        var scaleYDesc = EnsureDescriptionSmall(content, "ScaleYDesc", "Opciones: Y, -Y, X, -X, x-y", ref changed);
 
-        changed |= DisableLegacyDuplicateLabels(content, titleLabel, sectionFunctions, countLabel, countDesc, formulaLabel, formulaDesc, scaleXLabel, scaleXDesc, scaleYLabel, scaleYDesc, zoneLabel, zoneDesc);
+        var zoneLabel = EnsureLabelForDropdown(content, pc.dropZone, "DropdownZone_Label", "Zona", ref changed);
+        var zoneDesc = EnsureDescriptionSmall(content, "ZoneDesc", "Selecciona la zona donde aplicar el campo", ref changed);
+        changed |= RemoveDuplicateDirectLabels(content, scaleXLabel, scaleYLabel);
 
         int insertIndex = 0;
-        if (pc.statusLabel != null && pc.statusLabel.name != "PanelTitleLabel")
-        {
-            if (pc.statusLabel.gameObject.activeSelf)
-            {
-                pc.statusLabel.gameObject.SetActive(false);
-                changed = true;
-            }
-        }
-
         insertIndex = PlaceBlock(content, titleLabel?.transform, insertIndex, ref changed);
-
+        insertIndex = PlaceBlock(content, descriptionLabel?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, sectionFunctions?.transform, insertIndex, ref changed);
 
-        // Cantidad
         insertIndex = PlaceBlock(content, countLabel?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, pc.dropCount?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, countDesc?.transform, insertIndex, ref changed);
 
-        // Fórmula
         insertIndex = PlaceBlock(content, formulaLabel?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, pc.dropFormula?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, formulaDesc?.transform, insertIndex, ref changed);
 
-        // Escala X
+        // Funcion 1
         insertIndex = PlaceBlock(content, scaleXLabel?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, pc.inputScaleX?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, scaleXDesc?.transform, insertIndex, ref changed);
 
-        // Escala Y
+        // Funcion 2
         insertIndex = PlaceBlock(content, scaleYLabel?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, pc.inputScaleY?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, scaleYDesc?.transform, insertIndex, ref changed);
@@ -304,6 +328,8 @@ public class PanelUISetup
         if (dropdown == null)
             return;
 
+        FixDropdownTemplate(dropdown);
+
         if (dropdown.template != null && dropdown.template.gameObject.activeSelf)
         {
             dropdown.template.gameObject.SetActive(false);
@@ -344,6 +370,39 @@ public class PanelUISetup
         {
             le.flexibleWidth = 1f;
             changed = true;
+        }
+    }
+
+    static void FixDropdownTemplate(TMP_Dropdown dropdown)
+    {
+        if (dropdown == null)
+            return;
+
+        if (dropdown.template == null)
+        {
+            var template = dropdown.transform.Find("Template") as RectTransform;
+            if (template == null)
+            {
+                var rects = dropdown.GetComponentsInChildren<RectTransform>(true);
+                for (int i = 0; i < rects.Length; i++)
+                {
+                    if (rects[i] != null && rects[i].name == "Template")
+                    {
+                        template = rects[i];
+                        break;
+                    }
+                }
+            }
+
+            dropdown.template = template;
+        }
+
+        if (dropdown.template != null)
+        {
+            if (dropdown.template.GetComponent<CanvasGroup>() == null)
+                dropdown.template.gameObject.AddComponent<CanvasGroup>();
+
+            dropdown.template.gameObject.SetActive(false);
         }
     }
 
@@ -431,35 +490,6 @@ public class PanelUISetup
         if (label == null)
         {
             int targetIdx = Mathf.Max(dropdown.transform.GetSiblingIndex() - 1, 0);
-            if (targetIdx < content.childCount)
-            {
-                var previous = content.GetChild(targetIdx);
-                if (previous != null && previous.parent == content)
-                {
-                    var prevText = previous.GetComponent<TextMeshProUGUI>();
-                    if (prevText != null)
-                    {
-                        prevText.name = labelName;
-                        label = prevText;
-                        changed = true;
-                    }
-                }
-            }
-        }
-
-        label = EnsureSimpleLabel(content, labelName, labelText, 17f, FontStyles.Bold, ref changed, label);
-        return label;
-    }
-
-    static TextMeshProUGUI EnsureLabelForInputField(Transform content, TMP_InputField inputField, string labelName, string labelText, ref bool changed)
-    {
-        if (inputField == null)
-            return null;
-
-        var label = FindDirectLabel(content, labelName);
-        if (label == null)
-        {
-            int targetIdx = Mathf.Max(inputField.transform.GetSiblingIndex() - 1, 0);
             if (targetIdx < content.childCount)
             {
                 var previous = content.GetChild(targetIdx);
@@ -832,17 +862,156 @@ public class PanelUISetup
         return CreateLabeledDropdown(parent, objName, labelText);
     }
 
-    static TMP_InputField FindOrCreateInputField(Transform parent, string objName, string labelText)
+     static TMP_Dropdown FindOrCreateAxisDropdown(Transform parent, string objName, string labelText)
     {
+        var existingDrop = FindDirectDropdown(parent, objName);
+        if (existingDrop != null)
+            return existingDrop;
+
         var existing = parent.Find(objName);
-        if (existing != null)
+        if (existing != null && existing.GetComponent<TMP_InputField>() == null)
         {
-            var existingInput = existing.GetComponent<TMP_InputField>();
-            if (existingInput != null)
-                return existingInput;
+            existingDrop = existing.GetComponent<TMP_Dropdown>();
+            if (existingDrop != null)
+                return existingDrop;
         }
 
-        return CreateLabeledInputField(parent, objName, labelText);
+        return CreateAxisDropdown(parent, objName, labelText);
+    }
+
+    static TMP_Dropdown FindDirectDropdown(Transform parent, string objName)
+    {
+        if (parent == null)
+            return null;
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var child = parent.GetChild(i);
+            if (child == null || child.name != objName)
+                continue;
+
+            var dropdown = child.GetComponent<TMP_Dropdown>();
+            if (dropdown != null)
+                return dropdown;
+        }
+
+        return null;
+    }
+
+    static TMP_Dropdown CreateAxisDropdown(Transform parent, string objName, string labelText)
+    {
+        // label
+        GameObject labelGO = new GameObject(objName + "_Label");
+        labelGO.transform.SetParent(parent, false);
+        var rt = labelGO.AddComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(0, 24);
+
+        var text = labelGO.AddComponent<TextMeshProUGUI>();
+        text.text = labelText;
+        text.fontSize = 18;
+        text.color = new Color(0.85f, 0.85f, 0.85f);
+        text.fontStyle = FontStyles.Bold;
+
+        // dropdown: clone first dropdown in parent so structure matches
+        TMP_Dropdown source = parent.GetComponentInChildren<TMP_Dropdown>(true);
+        if (source == null)
+        {
+            Debug.LogError("[PanelSetup] Source TMP_Dropdown not found while creating axis dropdown.", parent);
+            return null;
+        }
+        GameObject dropGO = Object.Instantiate(source.gameObject, parent);
+        dropGO.name = objName;
+
+        TMP_Dropdown drop = dropGO.GetComponent<TMP_Dropdown>();
+        drop.ClearOptions();
+        drop.value = 0;
+
+        string[] firstFuncOpts  = { "X", "-X", "-Y", "Y", "-X-Y" };
+        string[] secondFuncOpts = { "Y", "-Y", "X", "-X", "X-Y" };
+        string[] opts = objName == "InputScaleX" ? firstFuncOpts : secondFuncOpts;
+        foreach (var o in opts)
+            drop.options.Add(new TMP_Dropdown.OptionData(o));
+
+        FixDropdownTemplate(drop);
+        return drop;
+    }
+
+    static bool RemoveLegacyFunctionInputFields(Transform content)
+    {
+        if (content == null)
+            return false;
+
+        bool changed = false;
+        string[] legacyNames = { "InputScaleX", "InputScaleY" };
+
+        for (int i = content.childCount - 1; i >= 0; i--)
+        {
+            var child = content.GetChild(i);
+            if (child == null)
+                continue;
+
+            bool isLegacyName = false;
+            for (int n = 0; n < legacyNames.Length; n++)
+            {
+                if (child.name == legacyNames[n])
+                {
+                    isLegacyName = true;
+                    break;
+                }
+            }
+
+            if (!isLegacyName)
+                continue;
+
+            if (child.GetComponent<TMP_InputField>() == null)
+                continue;
+
+            Object.DestroyImmediate(child.gameObject);
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    static bool RemoveDuplicateDirectLabels(Transform content, params TextMeshProUGUI[] keep)
+    {
+        if (content == null)
+            return false;
+
+        var keepSet = new HashSet<TextMeshProUGUI>();
+        for (int i = 0; i < keep.Length; i++)
+        {
+            if (keep[i] != null)
+                keepSet.Add(keep[i]);
+        }
+
+        bool changed = false;
+        string[] targetNames = { "InputScaleX_Label", "InputScaleY_Label" };
+        var labels = content.GetComponentsInChildren<TextMeshProUGUI>(true);
+        for (int i = labels.Length - 1; i >= 0; i--)
+        {
+            var label = labels[i];
+            if (label == null || label.transform.parent != content || keepSet.Contains(label))
+                continue;
+
+            bool isTarget = false;
+            for (int n = 0; n < targetNames.Length; n++)
+            {
+                if (label.name == targetNames[n])
+                {
+                    isTarget = true;
+                    break;
+                }
+            }
+
+            if (!isTarget)
+                continue;
+
+            Object.DestroyImmediate(label.gameObject);
+            changed = true;
+        }
+
+        return changed;
     }
 
     static TMP_Dropdown CreateLabeledDropdown(Transform parent, string objName, string labelText)
@@ -870,52 +1039,6 @@ public class PanelUISetup
         drop.ClearOptions();
 
         return drop;
-    }
-
-    static TMP_InputField CreateLabeledInputField(Transform parent, string objName, string labelText)
-    {
-        // --- input field ---
-        GameObject inputGO = new GameObject(objName);
-        inputGO.transform.SetParent(parent, false);
-
-        var inputRt = inputGO.AddComponent<RectTransform>();
-        var inputLE = inputGO.AddComponent<LayoutElement>();
-        inputLE.preferredHeight = 36f;
-        inputLE.flexibleWidth = 1f;
-
-        // Visual: Image as background
-        var bgImage = inputGO.AddComponent<Image>();
-        bgImage.color = new Color(0.10f, 0.20f, 0.30f, 0.9f);
-
-        // Add border effect
-        var outline = inputGO.AddComponent<Outline>();
-        outline.effectColor = new Color(0.3f, 0.6f, 0.8f, 0.5f);
-        outline.effectDistance = new Vector2(1, 1);
-
-        // Text component
-        GameObject textGO = new GameObject("Text", typeof(RectTransform));
-        textGO.transform.SetParent(inputGO.transform, false);
-        var textRect = textGO.GetComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = new Vector2(12, 0);
-        textRect.offsetMax = new Vector2(-12, 0);
-
-        var textMesh = textGO.AddComponent<TextMeshProUGUI>();
-        textMesh.text = "1";
-        textMesh.fontSize = 20;
-        textMesh.color = new Color(0.9f, 0.95f, 1f);
-        textMesh.alignment = TextAlignmentOptions.MidlineLeft;
-
-        // Input field component
-        var inputField = inputGO.AddComponent<TMP_InputField>();
-        inputField.text = "1";
-        inputField.characterLimit = 12;
-        inputField.contentType = TMP_InputField.ContentType.DecimalNumber;
-        inputField.textComponent = textMesh;
-        inputField.targetGraphic = bgImage;
-
-        return inputField;
     }
 
     static bool RemoveConflictingTrackedRaycasters(GameObject root)
