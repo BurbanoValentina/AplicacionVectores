@@ -1,0 +1,25 @@
+[33mc09a443[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mvale[m[33m, [m[1;31morigin/vale[m[33m)[m restauración de boat movement
+[33m00f7ce1[m New cambios
+[33m1309c6f[m ultima modificacion de errores
+[33mc3dd6c3[m Fix gitignore and remove generated files
+[33m9d388c6[m Fix gitignore and remove generated files
+[33mb51b18a[m Cambios movimiento y escena de botes
+[33m3fefb92[m Arreglo de problema de build, avances en que la barca sea afectada por el campo vectorial
+[33mef9a8f9[m Avances en el sistema de multijugador
+[33m0d945e9[m new prefab for the boat with associated component and Added animals files for new assets.
+[33mbe038e9[m Añadir marcador de centro de campo y opciones de configuración en VectorFieldManager; ajustar escalas y posiciones en BigIsland.unity y Panel.prefab.
+[33m6816d83[m Subiendo cambios antiguos campo vectorial funcionando con requisitos cumplidos
+[33m32c0ba6[m Mejora README: diagramas Mermaid actualizados con nuevas funciones de 2026
+[33m99bf01e[m Actualización de scripts, prefabs y renombrado de assets con caracteres especiales
+[33m853c3f2[m Coreccion en el panel errores a la generacion de vectores en el agua, cambio tamaño de agua completamente tamaño fijo, vectores funcionando a medida lo que se pide al panel o a los botones y implementacion de nuevas funciones como ZONA y INPUT en las variables de multiplicacion x y y
+[33mce371d1[m Merge branch 'vale' of https://github.com/BurbanoValentina/AplicacionVectores into vale
+[33mb6b79b7[m Mejora del Panel y VectorFieldManager: se añaden multiplicadores X/Y, zonas de visualización y ajustes en la generación de campos para evitar islas.
+[33m20f9074[m Remove author information from README
+[33m7b88a1b[m Actualización del README.md: mejora de la descripción del proyecto, adición de secciones y diagramas para la arquitectura y estructura del proyecto.
+[33m8808e2c[m[33m ([m[1;32mmain[m[33m)[m Adaptación del jugador y funcionamiento del panel en realidad virtual
+[33mc55566a[m Arreglo implementación del jugador
+[33ma5657d8[m Jugador implementado y Panel en proceso de implementación
+[33m0da8ffc[m Importación de modelos 2D a la aplicación
+[33m582cd8e[m Agregar archivos del proyecto Unity y actualizar .gitignore
+[33m07f8222[m Proyecto Unity base
+[33m5e9d23c[m first commit
