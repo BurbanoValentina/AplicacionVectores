@@ -9926,7 +9926,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 2596431735551609274, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 337661014}
   m_SourcePrefab: {fileID: 100100000, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
 --- !u!4 &212788617 stripped
 Transform:
@@ -15230,6 +15233,92 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1519188697402770169, guid: a90bc75212a7dce42b961e277b470f8e, type: 3}
   m_PrefabInstance: {fileID: 337204177}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &337661011 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2596431735551609274, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
+  m_PrefabInstance: {fileID: 212788616}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &337661014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 337661011}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38f6bf3d943ac7945842268c9ef1dca6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationArea
+  m_InteractionManager: {fileID: 0}
+  m_Colliders: []
+  m_InteractionLayers:
+    m_Bits: 4294967295
+  m_DistanceCalculationMode: 1
+  m_SelectMode: 1
+  m_FocusMode: 1
+  m_CustomReticle: {fileID: 0}
+  m_AllowGazeInteraction: 0
+  m_AllowGazeSelect: 0
+  m_OverrideGazeTimeToSelect: 0
+  m_GazeTimeToSelect: 0.5
+  m_OverrideTimeToAutoDeselectGaze: 0
+  m_TimeToAutoDeselectGaze: 3
+  m_AllowGazeAssistance: 0
+  m_FirstHoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastHoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_HoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_HoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FirstSelectEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastSelectExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_SelectEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_SelectExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FirstFocusEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastFocusExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FocusEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FocusExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Activated:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Deactivated:
+    m_PersistentCalls:
+      m_Calls: []
+  m_StartingHoverFilters: []
+  m_StartingSelectFilters: []
+  m_StartingInteractionStrengthFilters: []
+  m_TeleportationProvider: {fileID: 0}
+  m_MatchOrientation: 0
+  m_MatchDirectionalInput: 0
+  m_TeleportTrigger: 0
+  m_FilterSelectionByHitNormal: 0
+  m_UpNormalToleranceDegrees: 30
+  m_Teleporting:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1001 &339337568
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -24254,7 +24343,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5409220491861308042, guid: 814786cef81f89f4fb9eb9ca472e6a85, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2065982258}
   m_SourcePrefab: {fileID: 100100000, guid: 814786cef81f89f4fb9eb9ca472e6a85, type: 3}
 --- !u!1001 &491278420
 PrefabInstance:
@@ -24532,6 +24624,11 @@ Transform:
 Transform:
   m_CorrespondingSourceObject: {fileID: 2587156182966324022, guid: d71fb8fdd7564124591ae9173367da6e, type: 3}
   m_PrefabInstance: {fileID: 543204409}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &497482404 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2596431735551609274, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
+  m_PrefabInstance: {fileID: 1611283252}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &497869160
 PrefabInstance:
@@ -57681,6 +57778,21 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2587156182966324022, guid: d71fb8fdd7564124591ae9173367da6e, type: 3}
   m_PrefabInstance: {fileID: 607255751}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1192005295 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3568775240596131431, guid: e88e573a89b83df4e8c9127b9fb7b479, type: 3}
+  m_PrefabInstance: {fileID: 1346869758}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1192005296 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5192469693664222539, guid: e88e573a89b83df4e8c9127b9fb7b479, type: 3}
+  m_PrefabInstance: {fileID: 1346869758}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1192005297 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2819490037722877444, guid: e88e573a89b83df4e8c9127b9fb7b479, type: 3}
+  m_PrefabInstance: {fileID: 1346869758}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1192020673
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -59537,6 +59649,11 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 3063450851153204193, guid: 473e58a45cf2c5b46a6172709dec44b5, type: 3}
   m_PrefabInstance: {fileID: 1223881671}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1225220995 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2596431735551609274, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
+  m_PrefabInstance: {fileID: 1525990099}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1226096580
 PrefabInstance:
@@ -62067,17 +62184,41 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 3050202931940718543, guid: 4e3b5fd09dc365f46a83b422031d5d60, type: 3}
+      propertyPath: player
+      value: 
+      objectReference: {fileID: 1192005297}
+    - target: {fileID: 3050202931940718543, guid: 4e3b5fd09dc365f46a83b422031d5d60, type: 3}
+      propertyPath: playerTurn
+      value: 
+      objectReference: {fileID: 1192005295}
+    - target: {fileID: 3050202931940718543, guid: 4e3b5fd09dc365f46a83b422031d5d60, type: 3}
+      propertyPath: playerMovement
+      value: 
+      objectReference: {fileID: 1192005296}
+    - target: {fileID: 3768422888495685597, guid: 4e3b5fd09dc365f46a83b422031d5d60, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 3.124442
+      objectReference: {fileID: 0}
+    - target: {fileID: 3768422888495685597, guid: 4e3b5fd09dc365f46a83b422031d5d60, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 3.124442
+      objectReference: {fileID: 0}
+    - target: {fileID: 3768422888495685597, guid: 4e3b5fd09dc365f46a83b422031d5d60, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 3.124442
+      objectReference: {fileID: 0}
     - target: {fileID: 3768422888495685597, guid: 4e3b5fd09dc365f46a83b422031d5d60, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 72.92
+      value: 58.18
       objectReference: {fileID: 0}
     - target: {fileID: 3768422888495685597, guid: 4e3b5fd09dc365f46a83b422031d5d60, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -5.76
       objectReference: {fileID: 0}
     - target: {fileID: 3768422888495685597, guid: 4e3b5fd09dc365f46a83b422031d5d60, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 2.04
       objectReference: {fileID: 0}
     - target: {fileID: 3768422888495685597, guid: 4e3b5fd09dc365f46a83b422031d5d60, type: 3}
       propertyPath: m_LocalRotation.w
@@ -74567,13 +74708,97 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 2596431735551609274, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1525990103}
   m_SourcePrefab: {fileID: 100100000, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
 --- !u!4 &1525990100 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3405759552206574336, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
   m_PrefabInstance: {fileID: 1525990099}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1525990103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1225220995}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38f6bf3d943ac7945842268c9ef1dca6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationArea
+  m_InteractionManager: {fileID: 0}
+  m_Colliders: []
+  m_InteractionLayers:
+    m_Bits: 4294967295
+  m_DistanceCalculationMode: 1
+  m_SelectMode: 1
+  m_FocusMode: 1
+  m_CustomReticle: {fileID: 0}
+  m_AllowGazeInteraction: 0
+  m_AllowGazeSelect: 0
+  m_OverrideGazeTimeToSelect: 0
+  m_GazeTimeToSelect: 0.5
+  m_OverrideTimeToAutoDeselectGaze: 0
+  m_TimeToAutoDeselectGaze: 3
+  m_AllowGazeAssistance: 0
+  m_FirstHoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastHoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_HoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_HoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FirstSelectEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastSelectExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_SelectEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_SelectExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FirstFocusEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastFocusExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FocusEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FocusExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Activated:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Deactivated:
+    m_PersistentCalls:
+      m_Calls: []
+  m_StartingHoverFilters: []
+  m_StartingSelectFilters: []
+  m_StartingInteractionStrengthFilters: []
+  m_TeleportationProvider: {fileID: 0}
+  m_MatchOrientation: 0
+  m_MatchDirectionalInput: 0
+  m_TeleportTrigger: 0
+  m_FilterSelectionByHitNormal: 0
+  m_UpNormalToleranceDegrees: 30
+  m_Teleporting:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1001 &1526047961
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -77862,7 +78087,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 2596431735551609274, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1599139267}
   m_SourcePrefab: {fileID: 100100000, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
 --- !u!4 &1593092768 stripped
 Transform:
@@ -78218,6 +78446,92 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3063450851153204193, guid: 473e58a45cf2c5b46a6172709dec44b5, type: 3}
   m_PrefabInstance: {fileID: 1598517515}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1599139264 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2596431735551609274, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
+  m_PrefabInstance: {fileID: 1593092767}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1599139267
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1599139264}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38f6bf3d943ac7945842268c9ef1dca6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationArea
+  m_InteractionManager: {fileID: 0}
+  m_Colliders: []
+  m_InteractionLayers:
+    m_Bits: 4294967295
+  m_DistanceCalculationMode: 1
+  m_SelectMode: 1
+  m_FocusMode: 1
+  m_CustomReticle: {fileID: 0}
+  m_AllowGazeInteraction: 0
+  m_AllowGazeSelect: 0
+  m_OverrideGazeTimeToSelect: 0
+  m_GazeTimeToSelect: 0.5
+  m_OverrideTimeToAutoDeselectGaze: 0
+  m_TimeToAutoDeselectGaze: 3
+  m_AllowGazeAssistance: 0
+  m_FirstHoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastHoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_HoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_HoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FirstSelectEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastSelectExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_SelectEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_SelectExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FirstFocusEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastFocusExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FocusEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FocusExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Activated:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Deactivated:
+    m_PersistentCalls:
+      m_Calls: []
+  m_StartingHoverFilters: []
+  m_StartingSelectFilters: []
+  m_StartingInteractionStrengthFilters: []
+  m_TeleportationProvider: {fileID: 0}
+  m_MatchOrientation: 0
+  m_MatchDirectionalInput: 0
+  m_TeleportTrigger: 0
+  m_FilterSelectionByHitNormal: 0
+  m_UpNormalToleranceDegrees: 30
+  m_Teleporting:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!4 &1602343381 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3618170896191659197, guid: d30a5034038eb324a9d7878b84f50184, type: 3}
@@ -78715,13 +79029,97 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 2596431735551609274, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1611283256}
   m_SourcePrefab: {fileID: 100100000, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
 --- !u!4 &1611283253 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3405759552206574336, guid: b141f81ecc0e321478f808879e9b424d, type: 3}
   m_PrefabInstance: {fileID: 1611283252}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1611283256
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 497482404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38f6bf3d943ac7945842268c9ef1dca6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationArea
+  m_InteractionManager: {fileID: 0}
+  m_Colliders: []
+  m_InteractionLayers:
+    m_Bits: 4294967295
+  m_DistanceCalculationMode: 1
+  m_SelectMode: 1
+  m_FocusMode: 1
+  m_CustomReticle: {fileID: 0}
+  m_AllowGazeInteraction: 0
+  m_AllowGazeSelect: 0
+  m_OverrideGazeTimeToSelect: 0
+  m_GazeTimeToSelect: 0.5
+  m_OverrideTimeToAutoDeselectGaze: 0
+  m_TimeToAutoDeselectGaze: 3
+  m_AllowGazeAssistance: 0
+  m_FirstHoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastHoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_HoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_HoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FirstSelectEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastSelectExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_SelectEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_SelectExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FirstFocusEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastFocusExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FocusEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FocusExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Activated:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Deactivated:
+    m_PersistentCalls:
+      m_Calls: []
+  m_StartingHoverFilters: []
+  m_StartingSelectFilters: []
+  m_StartingInteractionStrengthFilters: []
+  m_TeleportationProvider: {fileID: 0}
+  m_MatchOrientation: 0
+  m_MatchDirectionalInput: 0
+  m_TeleportTrigger: 0
+  m_FilterSelectionByHitNormal: 0
+  m_UpNormalToleranceDegrees: 30
+  m_Teleporting:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1001 &1611748781
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -88192,6 +88590,127 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2587156182966324022, guid: d71fb8fdd7564124591ae9173367da6e, type: 3}
   m_PrefabInstance: {fileID: 1817218597}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1817441394
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1817441399}
+  - component: {fileID: 1817441398}
+  - component: {fileID: 1817441397}
+  - component: {fileID: 1817441396}
+  - component: {fileID: 1817441395}
+  m_Layer: 5
+  m_Name: no
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1817441395
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1817441394}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7951c64acb0fa62458bf30a60089fe2d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster
+  m_IgnoreReversedGraphics: 0
+  m_CheckFor2DOcclusion: 0
+  m_CheckFor3DOcclusion: 0
+  m_BlockingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RaycastTriggerInteraction: 1
+--- !u!114 &1817441396
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1817441394}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.GraphicRaycaster
+  m_IgnoreReversedGraphics: 1
+  m_BlockingObjects: 0
+  m_BlockingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+--- !u!114 &1817441397
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1817441394}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
+  m_UiScaleMode: 0
+  m_ReferencePixelsPerUnit: 100
+  m_ScaleFactor: 1
+  m_ReferenceResolution: {x: 800, y: 600}
+  m_ScreenMatchMode: 0
+  m_MatchWidthOrHeight: 0
+  m_PhysicalUnit: 3
+  m_FallbackScreenDPI: 96
+  m_DefaultSpriteDPI: 96
+  m_DynamicPixelsPerUnit: 1
+  m_PresetInfoIsWorld: 1
+--- !u!223 &1817441398
+Canvas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1817441394}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_RenderMode: 2
+  m_Camera: {fileID: 1346869763}
+  m_PlaneDistance: 100
+  m_PixelPerfect: 0
+  m_ReceivesEvents: 1
+  m_OverrideSorting: 0
+  m_OverridePixelPerfect: 0
+  m_SortingBucketNormalizedSize: 0
+  m_VertexColorAlwaysGammaSpace: 0
+  m_AdditionalShaderChannelsFlag: 0
+  m_UpdateRectTransformForStandalone: 0
+  m_SortingLayerID: 0
+  m_SortingOrder: 0
+  m_TargetDisplay: 0
+--- !u!224 &1817441399
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1817441394}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 40.171303}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 44.6625, y: 0.27835488}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1001 &1817524235
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -98835,8 +99354,35 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3181484011231255767, guid: 158847a09610acb4b8d69146d0fd088b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2018354482}
   m_SourcePrefab: {fileID: 100100000, guid: 158847a09610acb4b8d69146d0fd088b, type: 3}
+--- !u!1 &2018354472 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3181484011231255767, guid: 158847a09610acb4b8d69146d0fd088b, type: 3}
+  m_PrefabInstance: {fileID: 2018354471}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2018354482
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2018354472}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7951c64acb0fa62458bf30a60089fe2d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster
+  m_IgnoreReversedGraphics: 0
+  m_CheckFor2DOcclusion: 0
+  m_CheckFor3DOcclusion: 0
+  m_BlockingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RaycastTriggerInteraction: 1
 --- !u!4 &2020864517 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 627828213012876515, guid: b36aa8866ff42fa41b42da9b29c835bb, type: 3}
@@ -101163,6 +101709,92 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1519188697402770169, guid: a90bc75212a7dce42b961e277b470f8e, type: 3}
   m_PrefabInstance: {fileID: 2065273305}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2065982255 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5409220491861308042, guid: 814786cef81f89f4fb9eb9ca472e6a85, type: 3}
+  m_PrefabInstance: {fileID: 490823190}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2065982258
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2065982255}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38f6bf3d943ac7945842268c9ef1dca6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationArea
+  m_InteractionManager: {fileID: 0}
+  m_Colliders: []
+  m_InteractionLayers:
+    m_Bits: 4294967295
+  m_DistanceCalculationMode: 1
+  m_SelectMode: 1
+  m_FocusMode: 1
+  m_CustomReticle: {fileID: 0}
+  m_AllowGazeInteraction: 0
+  m_AllowGazeSelect: 0
+  m_OverrideGazeTimeToSelect: 0
+  m_GazeTimeToSelect: 0.5
+  m_OverrideTimeToAutoDeselectGaze: 0
+  m_TimeToAutoDeselectGaze: 3
+  m_AllowGazeAssistance: 0
+  m_FirstHoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastHoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_HoverEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_HoverExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FirstSelectEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastSelectExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_SelectEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_SelectExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FirstFocusEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_LastFocusExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FocusEntered:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FocusExited:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Activated:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Deactivated:
+    m_PersistentCalls:
+      m_Calls: []
+  m_StartingHoverFilters: []
+  m_StartingSelectFilters: []
+  m_StartingInteractionStrengthFilters: []
+  m_TeleportationProvider: {fileID: 0}
+  m_MatchOrientation: 0
+  m_MatchDirectionalInput: 0
+  m_TeleportTrigger: 0
+  m_FilterSelectionByHitNormal: 0
+  m_UpNormalToleranceDegrees: 30
+  m_Teleporting:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1001 &2068022049
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -104477,3 +105109,4 @@ SceneRoots:
   - {fileID: 1658154777}
   - {fileID: 736999126}
   - {fileID: 1279424684}
+  - {fileID: 1817441399}

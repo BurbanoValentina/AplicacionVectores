@@ -172,6 +172,7 @@ namespace VectorField
         public bool spawnArrowsUnderSceneRoot = true;
         [Tooltip("Opcional: si se asigna, las flechas se instancian bajo este transform.")]
         public Transform arrowsParentOverride;
+        private Vector2 GlobalEvalOrigin;
 
         struct ArrowEntry
         {
@@ -403,6 +404,7 @@ namespace VectorField
             }
 
             UpdateFieldCenterMarker(positions);
+            GlobalEvalOrigin = evalOrigin; //Se guarda para el uso del barco.
 
             int placed = 0;
             foreach (Vector2 p in positions)
@@ -1369,7 +1371,7 @@ namespace VectorField
             return n.Contains("boat") || n.Contains("ship");
         }
 
-        Vector2 EvaluateFormula(Vector2 p, Vector2 localOrigin)
+        public Vector2 EvaluateFormula(Vector2 p, Vector2 localOrigin)
         {
             // Las formulas se calculan respecto al centro de la zona activa,
             // para que cada zona se comporte de forma coherente.
@@ -1407,6 +1409,10 @@ namespace VectorField
             return new Vector2(result.x * scaleX, result.y * scaleY);
         }
 
+        public Vector2 GetEvalOrigin()
+        {
+        return GlobalEvalOrigin;
+        }
         void PlaceArrow(Vector3 worldPos, Vector2 dir2D, int totalCount)
         {
             if (dir2D.sqrMagnitude < 1e-6f) { PlaceDot(worldPos); return; }

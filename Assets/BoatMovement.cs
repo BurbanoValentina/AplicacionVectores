@@ -159,6 +159,14 @@ public class BoatMovement : MonoBehaviour
         Vector3 BoatMovement = Vector3.right * moveAmount * moveSpeed * Time.deltaTime;
         //Se calcula la fuerza del campo vectorial en la posición del barco.
         Vector3 fieldForce = manager.EvaluateFormula(boat.transform.position, GetOriginFromManager()) * fieldEffectStrength;
+        //Validación de que el field force sea un vector válido
+        if (!IsValidVector(fieldForce))
+        {
+            fieldForce = Vector3.zero;
+            Debug.Log("Fuerza del campo inválida");
+        }
+        fieldForce = new Vector3(fieldForce.x, 0, fieldForce.y) * Time.deltaTime; //Se convierte a un vector 3D y se escala por deltaTime.
+        fieldForce = Vector3.ClampMagnitude(fieldForce, 1f);
         //Se suman las fuerzas calculadas para obtener el movimiento final del barco.
         Vector3 finalMovement = BoatMovement + fieldForce;
 
@@ -212,4 +220,15 @@ public class BoatMovement : MonoBehaviour
             return manager.GetEvalOrigin();
         return Vector2.zero;
     }
+
+    private bool IsValidVector(Vector3 v)
+{
+    return
+        !float.IsNaN(v.x) &&
+        !float.IsNaN(v.y) &&
+        !float.IsNaN(v.z) &&
+        !float.IsInfinity(v.x) &&
+        !float.IsInfinity(v.y) &&
+        !float.IsInfinity(v.z);
+}
 }

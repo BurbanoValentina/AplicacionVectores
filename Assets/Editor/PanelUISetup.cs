@@ -1046,7 +1046,7 @@ public class PanelUISetup
         int removedTotal = 0;
         string[] fullTypeNames =
         {
-            "UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster, Unity.XR.Interaction.Toolkit",
+            "Unity.XR.Interaction.Toolkit",
             "UnityEngine.InputSystem.UI.TrackedDeviceRaycaster, Unity.InputSystem",
         };
 
