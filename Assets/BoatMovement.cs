@@ -166,7 +166,7 @@ public class BoatMovement : MonoBehaviour
             Debug.Log("Fuerza del campo inválida");
         }
         fieldForce = new Vector3(fieldForce.x, 0, fieldForce.y) * Time.deltaTime; //Se convierte a un vector 3D y se escala por deltaTime.
-        fieldForce = Vector3.ClampMagnitude(fieldForce, 1f);
+        fieldForce = Vector3.ClampMagnitude(fieldForce, 0.5f);
         //Se suman las fuerzas calculadas para obtener el movimiento final del barco.
         Vector3 finalMovement = BoatMovement + fieldForce;
 
