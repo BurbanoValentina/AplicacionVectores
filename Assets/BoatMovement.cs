@@ -32,20 +32,20 @@ public class BoatMovement : MonoBehaviour
 
     void OnEnable()
     {
-        if (leaveBoat != null)
+        if (leaveBoat != null && leaveBoat.action != null)
         {
             leaveBoat.action.performed += LeaveBoat;
             leaveBoat.action.Enable();
         }
 
-        if (moveAction != null)
+        if (moveAction != null && moveAction.action != null)
         {
             moveAction.action.performed += OnMove;
             moveAction.action.canceled += OnMove;
             moveAction.action.Enable();
         }
 
-        if (rotateAction != null)
+        if (rotateAction != null && rotateAction.action != null)
         {
             rotateAction.action.performed += OnRotate;
             rotateAction.action.canceled += OnRotate;
@@ -55,18 +55,18 @@ public class BoatMovement : MonoBehaviour
 
     void OnDisable()
     {
-        if (leaveBoat != null)
+        if (leaveBoat != null && leaveBoat.action != null)
         {
             leaveBoat.action.performed -= LeaveBoat;
         }
 
-        if (moveAction != null)
+        if (moveAction != null && moveAction.action != null)
         {
             moveAction.action.performed -= OnMove;
             moveAction.action.canceled -= OnMove;
         }
 
-        if (rotateAction != null)
+        if (rotateAction != null && rotateAction.action != null)
         {
             rotateAction.action.performed -= OnRotate;
             rotateAction.action.canceled -= OnRotate;
@@ -94,8 +94,6 @@ public class BoatMovement : MonoBehaviour
     void Update()
     {
         if ((!isPlayerOnBoat) || (!boatMovingActive)) return;
-
-        Vector2 rotationTest = rotateAction.action.ReadValue<Vector2>();
         MoveBoat();
     }
 
@@ -131,6 +129,9 @@ public class BoatMovement : MonoBehaviour
         }
 
         isPlayerOnBoat = false;
+        boatMovingActive = false;
+        moveInput = Vector2.zero;
+        rotateInput = Vector2.zero;
 
         player.transform.SetParent(null);
         EnablePlayerMovementAndRotation();
@@ -144,23 +145,22 @@ public class BoatMovement : MonoBehaviour
     private void OnRotate(InputAction.CallbackContext context)
     {
         rotateInput = context.ReadValue<Vector2>();
-        if (rotateInput != null)
-        {
-            Debug.Log("el valor de rotación es: " + rotateInput);
-        }
-        else
-        {
-            Debug.Log("rotateInput es null");
-        }
     }
 
     private void MoveBoat()
     {
+        if (boat == null)
+        {
+            Debug.LogWarning("BoatMovement: Missing boat reference.");
+            boatMovingActive = false;
+            return;
+        }
+
         // Adelante / atrás
         float moveAmount = -moveInput.y;
 
         // Rotación
-        float rotationAmount = moveInput.x;
+        float rotationAmount = rotateInput.sqrMagnitude > 0f ? rotateInput.x : moveInput.x;
 
         //Se calcula el movimiento del barco
         Vector3 BoatMovement = Vector3.right * moveAmount * moveSpeed * Time.deltaTime;
@@ -216,7 +216,7 @@ public class BoatMovement : MonoBehaviour
 
     private Vector2 GetOriginFromManager()
     {
-        if(manager != null)
+        if (manager != null)
             return manager.GetEvalOrigin();
         return Vector2.zero;
     }

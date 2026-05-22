@@ -7,10 +7,25 @@ using UnityEngine;
 [InitializeOnLoad]
 internal static class DisableXriAnalyticsHooks
 {
+    private static int cleanupAttempts;
+    private const int MaxCleanupAttempts = 120;
+
     static DisableXriAnalyticsHooks()
     {
-        // Delay one tick so package hooks are already registered.
+        RemoveXriAnalyticsPlayModeHooks();
+
+        // Delay/update cleanup covers cases where package static constructors run after this one.
         EditorApplication.delayCall += RemoveXriAnalyticsPlayModeHooks;
+        EditorApplication.update += RemoveXriAnalyticsPlayModeHooksUntilStable;
+    }
+
+    private static void RemoveXriAnalyticsPlayModeHooksUntilStable()
+    {
+        cleanupAttempts++;
+        RemoveXriAnalyticsPlayModeHooks();
+
+        if (cleanupAttempts >= MaxCleanupAttempts)
+            EditorApplication.update -= RemoveXriAnalyticsPlayModeHooksUntilStable;
     }
 
     private static void RemoveXriAnalyticsPlayModeHooks()
