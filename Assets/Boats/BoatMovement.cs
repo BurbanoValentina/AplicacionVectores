@@ -1,4 +1,3 @@
-using ExitGames.Client.Photon.StructWrapping;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -25,9 +24,6 @@ public class BoatMovement : MonoBehaviour
     private VectorField.VectorFieldManager manager;
     private Vector2 evalOrigin = Vector2.zero; // Origen para evaluar el campo vectorial
     
-    private bool boatAffectedByField = false;
-
-
     private bool isPlayerOnBoat = false;
     private bool boatMovingActive = false;
 
@@ -80,7 +76,18 @@ public class BoatMovement : MonoBehaviour
     void Start()
     {
         VFM = GameObject.Find("VFM");
-        manager = VFM.GetComponent<VectorField.VectorFieldManager>();
+        if (VFM == null)
+        {
+            var found = FindFirstObjectByType<VectorField.VectorFieldManager>();
+            if (found != null)
+                VFM = found.gameObject;
+        }
+
+        if (VFM != null)
+            manager = VFM.GetComponent<VectorField.VectorFieldManager>();
+
+        if (manager == null)
+            Debug.LogWarning("BoatMovement: No se encontró VectorFieldManager (objeto 'VFM'). El barco no usará el campo vectorial.");
     }
     
 
@@ -157,8 +164,9 @@ public class BoatMovement : MonoBehaviour
 
         //Se calcula el movimiento del barco
         Vector3 BoatMovement = Vector3.right * moveAmount * moveSpeed * Time.deltaTime;
-        //Se calcula la fuerza del campo vectorial en la posición del barco.
-        Vector3 fieldForce = manager.EvaluateFormula(boat.transform.position, GetOriginFromManager()) * fieldEffectStrength;
+        Vector3 fieldForce = Vector3.zero;
+        if (manager != null)
+            fieldForce = manager.EvaluateFormula(boat.transform.position, GetOriginFromManager()) * fieldEffectStrength;
         //Se suman las fuerzas calculadas para obtener el movimiento final del barco.
         Vector3 finalMovement = BoatMovement + fieldForce;
 

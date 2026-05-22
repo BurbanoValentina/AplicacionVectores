@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using VectorFieldUI;
 
 /// <summary>
-/// Adds the missing inputScaleX, inputScaleY, and dropZone UI controls
+/// Adds the missing dropScaleX, dropScaleY, and dropZone UI controls
 /// to the Panel prefab and wires them to PanelController.
 /// Run once: Menu → Panel → Add Missing Dropdowns
 /// </summary>
@@ -89,19 +89,19 @@ public class PanelUISetup
 
         Transform content = existingDrop.transform.parent;
 
-        // Reemplazar dropdowns con inputs de texto para X/Y
-        if (pc.inputScaleX == null)
+        // Reemplazar escala X y Y por dropdowns predefinidos
+        if (pc.dropScaleX == null)
         {
-            pc.inputScaleX = FindOrCreateInputField(content, "InputScaleX", "Multiplicador X");
+            pc.dropScaleX = FindOrCreateDropdownWithOptions(content, "dropScaleX", "Primera función:", new[] { "X", "-X", "-Y", "Y", "-X-Y" }, "X");
             changed = true;
-            Debug.Log("[PanelSetup] inputScaleX created/linked.");
+            Debug.Log("[PanelSetup] dropScaleX created/linked.");
         }
 
-        if (pc.inputScaleY == null)
+        if (pc.dropScaleY == null)
         {
-            pc.inputScaleY = FindOrCreateInputField(content, "InputScaleY", "Multiplicador Y");
+            pc.dropScaleY = FindOrCreateDropdownWithOptions(content, "dropScaleY", "Segunda función:", new[] { "Y", "-Y", "X", "-X", "X-Y" }, "Y");
             changed = true;
-            Debug.Log("[PanelSetup] inputScaleY created/linked.");
+            Debug.Log("[PanelSetup] dropScaleY created/linked.");
         }
 
         if (pc.dropZone == null)
@@ -138,6 +138,8 @@ public class PanelUISetup
 
         EnsureDropdownVisualSafety(pc.dropCount, ref changed);
         EnsureDropdownVisualSafety(pc.dropFormula, ref changed);
+        EnsureDropdownVisualSafety(pc.dropScaleX, ref changed);
+        EnsureDropdownVisualSafety(pc.dropScaleY, ref changed);
         EnsureDropdownVisualSafety(pc.dropZone, ref changed);
 
         var vlg = content.GetComponent<VerticalLayoutGroup>();
@@ -170,9 +172,49 @@ public class PanelUISetup
 
         var titleLabel = EnsureTitleLabel(content, ref changed);
         var descriptionLabel = EnsureDescriptionLabel(content, ref changed);
-        if (descriptionLabel != null && descriptionLabel.gameObject.activeSelf)
+        if (descriptionLabel != null)
         {
-            descriptionLabel.gameObject.SetActive(false);
+            if (!descriptionLabel.gameObject.activeSelf)
+            {
+                descriptionLabel.gameObject.SetActive(true);
+                changed = true;
+            }
+
+            const string descText = "Selecciona la primera y la segunda función. Luego pulsa Generar Campo.";
+            if (descriptionLabel.text != descText)
+            {
+                descriptionLabel.text = descText;
+                changed = true;
+            }
+        }
+
+        if (pc.dropScaleX != null && !pc.dropScaleX.gameObject.activeSelf)
+        {
+            pc.dropScaleX.gameObject.SetActive(true);
+            changed = true;
+        }
+
+        if (pc.dropScaleY != null && !pc.dropScaleY.gameObject.activeSelf)
+        {
+            pc.dropScaleY.gameObject.SetActive(true);
+            changed = true;
+        }
+
+        if (pc.dropCount != null && pc.dropCount.gameObject.activeSelf)
+        {
+            pc.dropCount.gameObject.SetActive(false);
+            changed = true;
+        }
+
+        if (pc.dropFormula != null && pc.dropFormula.gameObject.activeSelf)
+        {
+            pc.dropFormula.gameObject.SetActive(false);
+            changed = true;
+        }
+
+        if (pc.dropZone != null && pc.dropZone.gameObject.activeSelf)
+        {
+            pc.dropZone.gameObject.SetActive(false);
             changed = true;
         }
 
@@ -184,10 +226,10 @@ public class PanelUISetup
         var formulaLabel = EnsureLabelForDropdown(content, pc.dropFormula, "FormulaFunctionLabel", "Fórmula", ref changed);
         var formulaDesc = EnsureDescriptionSmall(content, "FormulaDesc", "Selecciona el patrón de dirección de los vectores", ref changed);
         
-        var scaleXLabel = EnsureLabelForInputField(content, pc.inputScaleX, "InputScaleX_Label", "Escala X", ref changed);
+        var scaleXLabel = EnsureLabelForDropdown(content, pc.dropScaleX, "DropdownScaleX_Label", "Primera funcion f(x,y):", ref changed);
         var scaleXDesc = EnsureDescriptionSmall(content, "ScaleXDesc", "Multiplicador para el eje X (ingresa cualquier número)", ref changed);
         
-        var scaleYLabel = EnsureLabelForInputField(content, pc.inputScaleY, "InputScaleY_Label", "Escala Y", ref changed);
+        var scaleYLabel = EnsureLabelForDropdown(content, pc.dropScaleY, "DropdownScaleY_Label", "Segunda funcion f(x,y):", ref changed);
         var scaleYDesc = EnsureDescriptionSmall(content, "ScaleYDesc", "Multiplicador para el eje Y (ingresa cualquier número)", ref changed);
         
         var zoneLabel = EnsureLabelForDropdown(content, pc.dropZone, "DropdownZone_Label", "Zona", ref changed);
@@ -221,12 +263,12 @@ public class PanelUISetup
 
         // Escala X
         insertIndex = PlaceBlock(content, scaleXLabel?.transform, insertIndex, ref changed);
-        insertIndex = PlaceBlock(content, pc.inputScaleX?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, pc.dropScaleX?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, scaleXDesc?.transform, insertIndex, ref changed);
 
         // Escala Y
         insertIndex = PlaceBlock(content, scaleYLabel?.transform, insertIndex, ref changed);
-        insertIndex = PlaceBlock(content, pc.inputScaleY?.transform, insertIndex, ref changed);
+        insertIndex = PlaceBlock(content, pc.dropScaleY?.transform, insertIndex, ref changed);
         insertIndex = PlaceBlock(content, scaleYDesc?.transform, insertIndex, ref changed);
 
         // Zona
@@ -830,6 +872,33 @@ public class PanelUISetup
         }
 
         return CreateLabeledDropdown(parent, objName, labelText);
+    }
+
+    static TMP_Dropdown FindOrCreateDropdownWithOptions(Transform parent, string objName, string labelText, string[] options, string fallbackSelected)
+    {
+        var existing = parent.Find(objName);
+        if (existing != null)
+        {
+            var existingDrop = existing.GetComponent<TMP_Dropdown>();
+            if (existingDrop != null)
+            {
+                // Ensure options are set correctly
+                existingDrop.ClearOptions();
+                var optList = new List<TMP_Dropdown.OptionData>();
+                foreach (var o in options)
+                    optList.Add(new TMP_Dropdown.OptionData(o));
+                existingDrop.AddOptions(optList);
+                return existingDrop;
+            }
+        }
+
+        var drop = CreateLabeledDropdown(parent, objName, labelText);
+        drop.ClearOptions();
+        var list = new List<TMP_Dropdown.OptionData>();
+        foreach (var o in options)
+            list.Add(new TMP_Dropdown.OptionData(o));
+        drop.AddOptions(list);
+        return drop;
     }
 
     static TMP_InputField FindOrCreateInputField(Transform parent, string objName, string labelText)

@@ -151,6 +151,16 @@ namespace VectorField
         [Tooltip("Si se usa fieldCenterTransform, ocultar la esfera automatica de centro.")]
         public bool hideAutoCenterMarkerWhenUsingTransform = true;
 
+        [Header("Muestreo radial desde el centro del campo")]
+        [Tooltip("Radio minimo desde la bolita centro hasta donde aparecen las flechas (evita el primer tramo comprimido).")]
+        public float radialMinRadius = 4f;
+        [Tooltip("Radio maximo desde la bolita centro hasta donde llegan las flechas (limite del rectangulo del campo).")]
+        public float radialMaxRadius = 20f;
+        [Tooltip("Angulo inicial del sector en grados (0 = hacia +Z / frente del mapa, 90 = +X / derecha, -90 = -X / izquierda, 180/ -180 = -Z / atras).")]
+        public float radialArcStartDeg = -90f;
+        [Tooltip("Angulo de barrido del sector en grados (180 = semicirculo, 270 = casi todo menos el centro-atras, 360 = circulo completo).")]
+        public float radialArcSpanDeg = 270f;
+
         const string FieldCenterObjectName = "VFM FIELD CENTER";
 
         [Header("Animacion de movimiento")]
@@ -344,7 +354,7 @@ namespace VectorField
             if (useFieldCenterTransformForPositions && fieldCenterTransform != null)
             {
                 positions = useFieldCenterTransformIgnoreFilters
-                    ? BuildGrid2DNoFilters(desiredCount, fieldRadius, evalOrigin)
+                    ? BuildRadialSectorPoints(desiredCount, evalOrigin)
                     : BuildGrid2D(desiredCount, fieldRadius, evalOrigin, islandCenter, exclusionRadius);
             }
             else if (useSingleBackRectSameAsIsland && _hasOceanBounds && islandRadius > 0.01f)
@@ -991,6 +1001,47 @@ namespace VectorField
                 var pt = new Vector2(x, z);
                 if (!IsPointValidForSpawn(pt))
                     continue;
+                pts.Add(pt);
+            }
+
+            return pts;
+        }
+
+        List<Vector2> BuildRadialSectorPoints(int n, Vector2 center)
+        {
+            // Muestreo radial desde el centro del campo.
+            // Las flechas se distribuyen en un sector circular alrededor de la bolita centro.
+            // - No hay flechas en el anillo interior [0, radialMinRadius] (evita la zona comprimida junto a la bolita).
+            // - Solo se generan puntos dentro del arco [radialArcStartDeg, radialArcStartDeg + radialArcSpanDeg]
+            //   medido en sentido antihorario desde +Z=0: 0=+Z(frente), 90=+X(derecha), -90=-X(izquierda), 180/-Z=atrás.
+            // - No se generan puntos más allá de radialMaxRadius (limite del rectángulo).
+            // - Se descartan los puntos fuera de los límites de agua (IsPointValidForSpawn).
+
+            float rmin = Mathf.Max(0.05f, radialMinRadius);
+            float rmax = Mathf.Max(rmin + 0.1f, radialMaxRadius);
+            float arcStart = radialArcStartDeg * Mathf.Deg2Rad;
+            float arcSpan = radialArcSpanDeg * Mathf.Deg2Rad;
+
+            var pts    = new List<Vector2>(n);
+            int safety = 0;
+            int maxAttempts = Mathf.Max(n * 80, 8000);
+
+            while (pts.Count < n && safety < maxAttempts)
+            {
+                safety++;
+
+                // Radio aleatorio en [rmin, rmax]
+                float r = UnityEngine.Random.Range(rmin, rmax);
+                // Ángulo aleatorio en el arco definido
+                float angle = arcStart + UnityEngine.Random.Range(0f, 1f) * arcSpan;
+
+                float x = center.x + r * Mathf.Sin(angle); // X: seno (eje derecho X+)
+                float z = center.y + r * Mathf.Cos(angle); // Z: coseno (eje adelante Z+)
+
+                var pt = new Vector2(x, z);
+                if (!IsPointValidForSpawn(pt))
+                    continue;
+
                 pts.Add(pt);
             }
 
