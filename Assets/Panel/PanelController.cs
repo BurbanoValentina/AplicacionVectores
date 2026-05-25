@@ -61,7 +61,7 @@ namespace VectorFieldUI
         {
             if (Application.isPlaying)
             {
-                RemoveConflictingTrackedRaycasters();
+                //RemoveConflictingTrackedRaycasters();
                 EnsureExtraControls();
             }
         }
