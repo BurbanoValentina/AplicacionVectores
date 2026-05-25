@@ -1,0 +1,2 @@
+C:\Users\proyecto.ramixta\Documents\GitHub\AplicacionVectores\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\CMakeLists.txt
+C:\Users\proyecto.ramixta\Documents\GitHub\AplicacionVectores\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\src\main\cpp\GameActivity\CMakeLists.txt

@@ -24,6 +24,9 @@
 .vscode/
 .idea/
 .claude/
+*.csproj
+*.sln
+*.slnx
 *.csproj.user
 *.sln.user
 *.swp
@@ -64,7 +67,9 @@ ExportedObj/
 *.apk
 *.aab
 *.unitypackage
+*.unitypackage.meta
 *.app
+*.log
 
 # Unity3D generated crash reports
 sysinfo.txt
@@ -76,6 +81,15 @@ crashlytics-build.properties
 [Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
 [Aa]ssets/[Ss]treamingAssets/aa.meta
 [Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Optional sample/import folders that should not be versioned by default
+[Aa]ssets/[Tt]ext[Mm]esh [Pp]ro/Examples & Extras/
+[Aa]ssets/[Tt]ext[Mm]esh [Pp]ro/Examples & Extras.meta
+[Aa]ssets/_Recovery/
+[Aa]ssets/_Recovery.meta
+[Aa]ssets/[Ss]amples/XR Interaction Toolkit/3.2.2/XR Interaction Simulator/
+[Aa]ssets/[Ss]amples/XR Interaction Toolkit/3.2.2/XR Interaction Simulator.meta
+unity_batch.log
 
 # ============================================================================
 # Environment & Configuration
