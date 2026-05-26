@@ -25,7 +25,9 @@ public class BoatMovement : MonoBehaviour
     private VectorField.VectorFieldManager manager;
     private Vector2 evalOrigin = Vector2.zero; // Origen para evaluar el campo vectorial
     
-    private bool boatAffectedByField = false;
+    #pragma warning disable 0414 // El valor nunca se usa, pero se deja para posible lógica futura
+    private bool boatAffectedByField = false; 
+    #pragma warning restore 0414
 
 
     private bool isPlayerOnBoat = false;
@@ -36,6 +38,7 @@ public class BoatMovement : MonoBehaviour
 
     void OnEnable()
     {
+       // The line is performing a null check on the `leaveBoat` variable and its `action` property.
         if (leaveBoat != null && leaveBoat.action != null)
         {
             leaveBoat.action.performed += LeaveBoat;
