@@ -1354,8 +1354,13 @@
     <ProjectReference Include="PhotonUnityNetworking.Editor.csproj" />
     <ProjectReference Include="PhotonUnityNetworking.Utilities.csproj" />
     <ProjectReference Include="PhotonRealtime.csproj" />
+    <ProjectReference Include="Unity.XR.Interaction.Toolkit.Samples.InteractionSimulator.Editor.csproj" />
     <ProjectReference Include="PhotonUnityNetworking.Demos.csproj" />
     <ProjectReference Include="PhotonChat.csproj" />
+    <ProjectReference Include="Unity.XR.Interaction.Toolkit.Samples.StarterAssets.Editor.csproj" />
+    <ProjectReference Include="Unity.XR.Interaction.Toolkit.Samples.DeviceSimulator.csproj" />
+    <ProjectReference Include="Unity.XR.Interaction.Toolkit.Samples.StarterAssets.csproj" />
+    <ProjectReference Include="Unity.XR.Interaction.Toolkit.Samples.InteractionSimulator.csproj" />
     <ProjectReference Include="PunDemos.DemoHubEditor.csproj" />
     <ProjectReference Include="PhotonUnityNetworking.Utilities.Culling.Editor.csproj" />
     <ProjectReference Include="PunDemos.DemoSlotcarEditor.csproj" />

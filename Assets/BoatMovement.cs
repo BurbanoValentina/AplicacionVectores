@@ -32,6 +32,7 @@ public class BoatMovement : MonoBehaviour
 
     void OnEnable()
     {
+       // The line is performing a null check on the `leaveBoat` variable and its `action` property.
         if (leaveBoat != null && leaveBoat.action != null)
         {
             leaveBoat.action.performed += LeaveBoat;
@@ -220,4 +221,15 @@ public class BoatMovement : MonoBehaviour
             return manager.GetEvalOrigin();
         return Vector2.zero;
     }
+
+    private bool IsValidVector(Vector3 v)
+{
+    return
+        !float.IsNaN(v.x) &&
+        !float.IsNaN(v.y) &&
+        !float.IsNaN(v.z) &&
+        !float.IsInfinity(v.x) &&
+        !float.IsInfinity(v.y) &&
+        !float.IsInfinity(v.z);
+}
 }

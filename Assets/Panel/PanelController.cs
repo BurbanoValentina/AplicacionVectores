@@ -78,9 +78,11 @@ namespace VectorFieldUI
 
         void Awake()
         {
-            RemoveConflictingTrackedRaycasters();
-            if (!Application.isPlaying && applyStyleInEditMode)
-                ApplyPanelVisualStyle();
+            if (Application.isPlaying)
+            {
+                //RemoveConflictingTrackedRaycasters();
+                EnsureExtraControls();
+            }
         }
 
         void OnEnable()
