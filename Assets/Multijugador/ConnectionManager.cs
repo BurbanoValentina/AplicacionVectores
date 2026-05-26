@@ -38,11 +38,14 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
 
     private void JoinOrCreateRoom()
     {
+        Debug.Log("Intentando unirse o crear la sala: " + roomName);
         if (string.IsNullOrEmpty(roomName))
         {
             roomName = "Room_" + Random.Range(1000, 9999);
         }
 
         PhotonNetwork.JoinOrCreateRoom(roomName, new Photon.Realtime.RoomOptions { MaxPlayers = 4 }, null);
+        Debug.Log("JoinOrCreateRoom called with room name: " + roomName);
+        
     }
 }

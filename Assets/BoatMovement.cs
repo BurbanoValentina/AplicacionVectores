@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 public class BoatMovement : MonoBehaviour
 {
     [SerializeField] GameObject boat;
-    [SerializeField] GameObject player;
+    [SerializeField] private GameObject player;
     [SerializeField] GameObject playerMovement;
     [SerializeField] GameObject playerTurn;
 
@@ -166,7 +166,7 @@ public class BoatMovement : MonoBehaviour
             Debug.Log("Fuerza del campo inválida");
         }
         fieldForce = new Vector3(fieldForce.x, 0, fieldForce.y) * Time.deltaTime; //Se convierte a un vector 3D y se escala por deltaTime.
-        fieldForce = Vector3.ClampMagnitude(fieldForce, 0.5f);
+        fieldForce = Vector3.ClampMagnitude(fieldForce, 0.1f);
         //Se suman las fuerzas calculadas para obtener el movimiento final del barco.
         Vector3 finalMovement = BoatMovement + fieldForce;
 
@@ -222,7 +222,7 @@ public class BoatMovement : MonoBehaviour
     }
 
     private bool IsValidVector(Vector3 v)
-{
+    {
     return
         !float.IsNaN(v.x) &&
         !float.IsNaN(v.y) &&
@@ -230,5 +230,18 @@ public class BoatMovement : MonoBehaviour
         !float.IsInfinity(v.x) &&
         !float.IsInfinity(v.y) &&
         !float.IsInfinity(v.z);
-}
+    }
+
+    public void SetPlayer()
+    {
+        player = GameManager.Instance.playerPrefab;
+        if(player == null)
+        {
+            Debug.LogWarning("BoatMovement: Player reference is null in GameManager.");
+        }
+        else
+        {
+            Debug.Log("BoatMovement: Player reference set from GameManager.");
+        }
+    }
 }

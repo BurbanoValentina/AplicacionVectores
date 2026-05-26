@@ -59,11 +59,13 @@
     <Compile Include="Assets\Photon\PhotonChat\Demos\Demo Chat\Code\Utilities\ChatIdCheckerUI.cs" />
     <Compile Include="Assets\FPSCameraController.cs" />
     <Compile Include="Assets\Photon\PhotonChat\Demos\Demo Chat\Code\Utilities\DestroyOnStart.cs" />
+    <Compile Include="Assets\Multijugador\MultiplayerSpawner.cs" />
     <Compile Include="Assets\WaterRippleShader Eldvmo\Scripts\MouseInputForRipple.cs" />
     <Compile Include="Assets\VectorField\ExpressionCompiler.cs" />
     <Compile Include="Assets\Photon\PhotonChat\Demos\Demo Chat\Code\FriendItem.cs" />
     <Compile Include="Assets\BoatMovement.cs" />
     <Compile Include="Assets\WaterRippleShader Eldvmo\Scripts\BoatFloatControl.cs" />
+    <Compile Include="Assets\Multijugador\GameManager.cs" />
     <Compile Include="Assets\Scenes\Scripts\Readme.cs" />
     <Compile Include="Assets\Photon\PhotonChat\Demos\Demo Chat\Code\ChatNewGui.cs" />
     <Compile Include="Assets\WaterRippleShader Eldvmo\Scripts\RaindropRipple.cs" />
@@ -71,7 +73,9 @@
     <Compile Include="Assets\Photon\PhotonChat\Demos\Demo Chat\Code\Utilities\TextButtonTransition.cs" />
     <Compile Include="Assets\WaterRippleShader Eldvmo\Scripts\ObjectCollisionRipple.cs" />
     <Compile Include="Assets\WaterRippleShader Eldvmo\Scripts\BoatControl.cs" />
+    <Compile Include="Assets\Multijugador\XRNetworkSetup.cs" />
     <Compile Include="Assets\Animals\DuckFieldSpawner.cs" />
+    <Compile Include="Assets\Multijugador\PlayerSpawnEvent.cs" />
     <Compile Include="Assets\Panel\PanelController.cs" />
   </ItemGroup>
   <ItemGroup>
