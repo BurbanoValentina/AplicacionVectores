@@ -215,28 +215,75 @@ namespace VectorField
 
         void Awake()
         {
-            TryResolveFieldCenterTransform();
+            // Forzar SIEMPRE el uso de la bolita [VFM Field Center] como centro
+            ForceFieldCenterToVFMFieldCenter();
+            // Puedes cambiar la fórmula aquí si quieres que apunten hacia la bolita:
+            formula = FieldFormula.RadialOutward; // o FieldFormula.RadialInward
         }
 
         bool TryResolveFieldCenterTransform()
         {
-            if (fieldCenterTransform != null)
-                return true;
-
-            var go = GameObject.Find(FieldCenterObjectName);
+            // SIEMPRE buscar y usar la bolita [VFM Field Center] como centro
+            var go = GameObject.Find("[VFM Field Center]");
             if (go == null)
-                go = GameObject.Find("[VFM Field Center]");
+                go = GameObject.Find(FieldCenterObjectName);
             if (go == null)
                 go = GameObject.Find("VFM Field Center");
+            
             if (go == null)
-                return false;
-
+            {
+                // Crear automáticamente si no existe
+                Debug.LogWarning("[VFM] Objeto [VFM Field Center] no encontrado en TryResolveFieldCenterTransform. Creando automáticamente...");
+                go = new GameObject("[VFM Field Center]");
+                go.transform.position = new Vector3(zoneCenter.x, waterSurfaceY + spawnYOffset, zoneCenter.y);
+            }
+            
             fieldCenterTransform = go.transform;
             useFieldCenterTransformForOrigin = true;
             useFieldCenterTransformForMarker = true;
             useFieldCenterTransformForPositions = true;
             useFieldCenterTransformIgnoreFilters = true;
+            hideAutoCenterMarkerWhenUsingTransform = true;
             return true;
+        }
+
+        // Forzar SIEMPRE el uso de la bolita [VFM Field Center] como centro
+        private void ForceFieldCenterToVFMFieldCenter()
+        {
+            var go = GameObject.Find("[VFM Field Center]");
+            if (go == null)
+                go = GameObject.Find(FieldCenterObjectName);
+            if (go == null)
+                go = GameObject.Find("VFM Field Center");
+            
+            if (go == null)
+            {
+                // Crear automáticamente el objeto si no existe
+                Debug.LogWarning("[VFM] Objeto [VFM Field Center] no encontrado. Creando automáticamente...");
+                
+                // Calcular posición: centro del océano si existe, sino usar zona actual
+                Vector3 spawnPos = Vector3.zero;
+                if (_hasOceanBounds)
+                {
+                    spawnPos = _oceanBounds.center;
+                    spawnPos.y = waterSurfaceY + spawnYOffset;
+                }
+                else
+                {
+                    spawnPos = new Vector3(zoneCenter.x, waterSurfaceY + spawnYOffset, zoneCenter.y);
+                }
+                
+                go = new GameObject("[VFM Field Center]");
+                go.transform.position = spawnPos;
+                Debug.Log($"[VFM] Bolita creada en posición: {spawnPos}");
+            }
+            
+            fieldCenterTransform = go.transform;
+            useFieldCenterTransformForOrigin = true;
+            useFieldCenterTransformForMarker = true;
+            useFieldCenterTransformForPositions = true;
+            useFieldCenterTransformIgnoreFilters = true;
+            hideAutoCenterMarkerWhenUsingTransform = true;
         }
 
         public Vector3 GetFieldCenterWorld()
@@ -293,7 +340,10 @@ namespace VectorField
 
         public void GenerateField()
         {
-            TryResolveFieldCenterTransform();
+            // Forzar SIEMPRE el uso de la bolita [VFM Field Center] como centro
+            ForceFieldCenterToVFMFieldCenter();
+            // Puedes cambiar la fórmula aquí si quieres que apunten hacia la bolita:
+            formula = FieldFormula.RadialOutward; // o FieldFormula.RadialInward
 
             string zoneKey = GetZoneKey();
             _generationZoneKey = zoneKey;
@@ -332,92 +382,41 @@ namespace VectorField
             List<Vector2> positions;
             Vector2 evalOrigin = zoneCenter;
 
-            if (useFieldCenterTransformForOrigin && fieldCenterTransform != null)
+            // SIEMPRE usar la bolita como centro - es obligatorio
+            var center = fieldCenterTransform.position;
+            evalOrigin = new Vector2(center.x, center.z);
+            zoneCenter = evalOrigin;
+            
+            // Expandir todos los campos vectoriales en el rectángulo del agua
+            if (_hasOceanBounds)
             {
-                var center = fieldCenterTransform.position;
-                evalOrigin = new Vector2(center.x, center.z);
-                zoneCenter = evalOrigin;
-            }
-
-            if (useFieldCenterTransformForPositions && fieldCenterTransform != null)
-            {
-                positions = useFieldCenterTransformIgnoreFilters
-                    ? BuildGrid2DNoFilters(desiredCount, fieldRadius, evalOrigin)
-                    : BuildGrid2D(desiredCount, fieldRadius, evalOrigin, islandCenter, exclusionRadius);
-            }
-            else if (useSingleBackRectSameAsIsland && _hasOceanBounds && islandRadius > 0.01f)
-            {
-                float rectRadius = islandRadius * Mathf.Max(0.5f, backRectScaleMultiplier);
-                if (TryComputeBackRectSameAsIsland(_oceanBounds, islandCenter, rectRadius, backRectEdgeInset, out float minX, out float maxX, out float minZ, out float maxZ))
-                {
-                    evalOrigin = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
-                    zoneCenter = evalOrigin;
-
-                    positions = useDensePacking
-                        ? BuildDensePackedRectanglePoints(desiredCount, minX, maxX, minZ, maxZ)
-                        : BuildPackedRectanglePoints(desiredCount, minX, maxX, minZ, maxZ);
-                }
-                else
-                {
-                    // Fallback seguro
-                    positions = sampleAcrossEntireOcean && _hasOceanBounds
-                        ? BuildDistributedOceanPoints(desiredCount, _oceanBounds, islandCenter, exclusionRadius)
-                        : BuildGrid2D(desiredCount, fieldRadius, zoneCenter, islandCenter, exclusionRadius);
-                }
-            }
-            else if (sampleAcrossEntireOcean && _hasOceanBounds)
-            {
-                positions = BuildDistributedOceanPoints(desiredCount, _oceanBounds, islandCenter, exclusionRadius);
+                // Usar el rectángulo completo del océano para distribuir vectores
+                positions = BuildDistributedOceanPointsFromCenter(desiredCount, _oceanBounds, evalOrigin);
             }
             else
             {
-                positions = BuildGrid2D(desiredCount, fieldRadius, zoneCenter, islandCenter, exclusionRadius);
-            }
-
-            // Si por filtros/detección queda vacío, forzar un rectángulo detrás de la isla como último recurso.
-            if (positions == null || positions.Count == 0)
-            {
-                if (islandRadius > 0.01f)
-                {
-                    float half = Mathf.Max(5f, islandRadius);
-                    float minX = islandCenter.x - half;
-                    float maxX = islandCenter.x + half;
-                    // Asumimos "atrás" hacia -Z cuando no hay bounds del océano.
-                    float maxZ = islandCenter.y - Mathf.Max(0f, backEndOffset);
-                    float minZ = maxZ - (half * 2f);
-
-                    evalOrigin = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
-                    zoneCenter = evalOrigin;
-
-                    positions = useDensePacking
-                        ? BuildDensePackedRectanglePoints(desiredCount, minX, maxX, minZ, maxZ)
-                        : BuildPackedRectanglePoints(desiredCount, minX, maxX, minZ, maxZ);
-
-                    Debug.LogWarning($"[VFM] Fallback detrás de isla aplicado. rect=({minX:F1},{maxX:F1})x({minZ:F1},{maxZ:F1})", this);
-                }
+                // Fallback: grid centrado en la bolita sin filtros
+                positions = BuildGrid2DNoFilters(desiredCount, fieldRadius, evalOrigin);
             }
 
             if (positions == null || positions.Count == 0)
             {
-                Debug.LogError($"[VFM] No hay puntos para spawnear. desired={desiredCount} oceanBounds={_hasOceanBounds} islandR={islandRadius} sampleOcean={sampleAcrossEntireOcean} backRect={useSingleBackRectSameAsIsland}", this);
+                Debug.LogError($"[VFM] No hay puntos para spawnear. desired={desiredCount} oceanBounds={_hasOceanBounds}", this);
                 return;
             }
 
             UpdateFieldCenterMarker(positions);
-            GlobalEvalOrigin = evalOrigin; //Se guarda para el uso del barco.
+            GlobalEvalOrigin = evalOrigin;
 
             int placed = 0;
             foreach (Vector2 p in positions)
             {
                 Vector2 dir = EvaluateFormula(p, evalOrigin);
                 Vector3 worldPos = new Vector3(p.x, GetSpawnY(p), p.y);
-                // Usar el conteo deseado (input del panel) para el escalado por cantidad,
-                // aunque por filtros fisicos se generen un poco menos.
                 PlaceArrow(worldPos, dir, desiredCount);
                 placed++;
             }
 
-            // Diagnóstico para encontrar rápido los objetos generados.
             var parent = GetArrowsParent();
             Debug.Log($"[VFM] Parent de flechas: {(parent != null ? parent.name : "<null>")} / root={(parent != null ? parent.root.name : "<null>")}", this);
             if (positions.Count > 0)
@@ -427,7 +426,7 @@ namespace VectorField
                 Debug.Log($"[VFM] Ejemplo pos0=({p0.x:F2},{p0.y:F2}) ySpawn={y0:F2} oceanMaxY={(_hasOceanBounds ? _oceanBounds.max.y.ToString("F2") : "NA")} waterY={waterSurfaceY:F2}", this);
             }
 
-            Debug.Log($"[VFM] Generado. placed={placed} desired={desiredCount} useFunctions={useFunctionInputs} backRect={useSingleBackRectSameAsIsland} oceanBounds={_hasOceanBounds}", this);
+            Debug.Log($"[VFM] Generado. placed={placed} desired={desiredCount} useFunctions={useFunctionInputs} oceanBounds={_hasOceanBounds}", this);
         }
 
         void UpdateFieldCenterMarker(List<Vector2> positions)
@@ -902,6 +901,64 @@ namespace VectorField
 
         public void DeleteField() { ClearArrows(); }
 
+        // Distribuye vectores en todo el rectángulo del océano centrado en la bolita
+        List<Vector2> BuildDistributedOceanPointsFromCenter(int n, Bounds oceanBounds, Vector2 centerPoint)
+        {
+            float minX = oceanBounds.min.x;
+            float maxX = oceanBounds.max.x;
+            float minZ = oceanBounds.min.z;
+            float maxZ = oceanBounds.max.z;
+
+            float width = Mathf.Max(1f, maxX - minX);
+            float depth = Mathf.Max(1f, maxZ - minZ);
+            float aspect = width / depth;
+
+            int cols = Mathf.Max(1, Mathf.RoundToInt(Mathf.Sqrt(n * aspect)));
+            int rows = Mathf.Max(1, Mathf.CeilToInt((float)n / cols));
+
+            float stepX = width / cols;
+            float stepZ = depth / rows;
+            float jitter = Mathf.Clamp(spawnJitterFactor, 0f, 0.45f);
+            float jitterX = stepX * jitter;
+            float jitterZ = stepZ * jitter;
+
+            var pts = new List<Vector2>(n);
+            for (int r = 0; r < rows && pts.Count < n; r++)
+            {
+                for (int c = 0; c < cols && pts.Count < n; c++)
+                {
+                    float baseX = minX + (c + 0.5f) * stepX;
+                    float baseZ = minZ + (r + 0.5f) * stepZ;
+
+                    float x = baseX + UnityEngine.Random.Range(-jitterX, jitterX);
+                    float z = baseZ + UnityEngine.Random.Range(-jitterZ, jitterZ);
+                    var pt = new Vector2(Mathf.Clamp(x, minX, maxX), Mathf.Clamp(z, minZ, maxZ));
+
+                    if (!IsPointValidForSpawn(pt))
+                        continue;
+
+                    pts.Add(pt);
+                }
+            }
+
+            int attempts = 0;
+            int maxAttempts = Mathf.Max(6000, n * 30);
+            while (pts.Count < n && attempts < maxAttempts)
+            {
+                attempts++;
+                float x = UnityEngine.Random.Range(minX, maxX);
+                float z = UnityEngine.Random.Range(minZ, maxZ);
+                var pt = new Vector2(x, z);
+
+                if (!IsPointValidForSpawn(pt))
+                    continue;
+
+                pts.Add(pt);
+            }
+
+            return pts;
+        }
+
         // inflate: genera mas candidatos para compensar los filtrados por la isla
         List<Vector2> BuildGrid2D(int n, float radius, Vector2 center,
                                   Vector2 islandCenter, float islandRadius)
@@ -1375,7 +1432,9 @@ namespace VectorField
         {
             // Las formulas se calculan respecto al centro de la zona activa,
             // para que cada zona se comporte de forma coherente.
-            Vector2 local = p - localOrigin;
+            // Siempre usar la bolita como centro real
+            Vector2 center = localOrigin;
+            Vector2 local = p - center;
             float x = local.x, y = local.y;
             float r2 = x * x + y * y;
             Vector2 result;
@@ -1390,20 +1449,32 @@ namespace VectorField
 
             switch (formula)
             {
-                case FieldFormula.RadialOutward:   result = new Vector2(x, y); break;
-                case FieldFormula.RadialInward:    result = new Vector2(-x, -y); break;
-                case FieldFormula.RotationXY:      result = new Vector2(-y, x); break;
+                case FieldFormula.RadialOutward:
+                    // Apunta hacia afuera desde la bolita
+                    result = local;
+                    break;
+                case FieldFormula.RadialInward:
+                    // Apunta hacia la bolita (centro)
+                    result = -local;
+                    break;
+                case FieldFormula.RotationXY:
+                    result = new Vector2(-y, x); break;
                 case FieldFormula.Gravitational:
-                    result = r2 < 0.01f ? Vector2.zero : new Vector2(-x, -y) / r2; break;
-                case FieldFormula.Saddle:          result = new Vector2(x, -y); break;
-                case FieldFormula.Constant:        result = new Vector2(1f, 0f); break;
+                    result = r2 < 0.01f ? Vector2.zero : (-local) / r2; break;
+                case FieldFormula.Saddle:
+                    result = new Vector2(x, -y); break;
+                case FieldFormula.Constant:
+                    result = new Vector2(1f, 0f); break;
                 case FieldFormula.Whirlpool:
                     result = r2 < 0.01f ? Vector2.zero : new Vector2(-y, x) / r2; break;
-                case FieldFormula.Spiral:          result = new Vector2(x - y, x + y); break;
+                case FieldFormula.Spiral:
+                    result = new Vector2(x - y, x + y); break;
                 case FieldFormula.TargetPoint:
-                    Vector2 diff = new Vector2(target.x, target.z) - p;
+                    Vector2 diff = center - p;
                     result = diff.magnitude > 0.001f ? diff.normalized : Vector2.zero; break;
-                default: result = new Vector2(x, y); break;
+                default:
+                    result = local;
+                    break;
             }
 
             return new Vector2(result.x * scaleX, result.y * scaleY);
@@ -1421,10 +1492,12 @@ namespace VectorField
             // ── Escala por cantidad (pedido)
             // - 100  -> grande
             // - 1000 -> se achica progresivo (absoluteMinArrowScale)
-            // - 2000 -> MUY pequeno (absoluteMinArrowScale * backSectorShrinkAt2000)
+            // - 2000 -> aumentado para que sea visible al expandirse en el océano
             int countClamped = Mathf.Clamp(totalCount, 100, 2000);
             float scaleAt1000 = Mathf.Max(0.0001f, absoluteMinArrowScale);
-            float scaleAt2000 = Mathf.Max(0.0001f, scaleAt1000 * Mathf.Clamp(backSectorShrinkAt2000, 0.01f, 0.5f));
+            // Para 2000 vectores expandidos: usar factor mayor para que sean más visibles
+            float expandFactor = Mathf.Clamp(backSectorShrinkAt2000, 0.01f, 0.5f);
+            float scaleAt2000 = Mathf.Max(0.0001f, scaleAt1000 * expandFactor * 1.8f); // Aumentado 1.8x
             float scale;
             if (countClamped <= 1000)
             {
