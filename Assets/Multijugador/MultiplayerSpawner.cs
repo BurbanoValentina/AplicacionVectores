@@ -9,7 +9,6 @@ public class MultiplayerSpawner : MonoBehaviour
     [SerializeField] private GameObject playerPrefab;
     private bool hasSpawned = false;
     private GameObject PlayerEvent;
-
      
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -45,7 +44,8 @@ public class MultiplayerSpawner : MonoBehaviour
             Debug.Log("Waiting for connection to be ready...");
             yield return null;
         }
-        yield return new WaitForSeconds(3f);
+        yield return new WaitForSeconds(10f);
         SpawnPlayer(0); // Spawn player after connection is ready
     }
+
 }

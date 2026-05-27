@@ -235,6 +235,24 @@ public class BoatMovement : MonoBehaviour
     public void SetPlayer()
     {
         player = GameManager.Instance.playerPrefab;
+        playerMovement = player.transform.Find("Locomotion").Find("Move").gameObject;
+        if(playerMovement == null)
+        {
+            Debug.LogWarning("BoatMovement: Player movement reference is null in GameManager.");
+        }
+        else
+        {
+            Debug.Log("BoatMovement: Player movement reference set from GameManager.");
+        }
+        playerTurn = player.transform.Find("Locomotion").Find("Turn").gameObject;
+            if(playerTurn == null)
+            {
+                Debug.LogWarning("BoatMovement: Player turn reference is null in GameManager.");
+            }
+            else
+            {
+                Debug.Log("BoatMovement: Player turn reference set from GameManager.");
+            }
         if(player == null)
         {
             Debug.LogWarning("BoatMovement: Player reference is null in GameManager.");
