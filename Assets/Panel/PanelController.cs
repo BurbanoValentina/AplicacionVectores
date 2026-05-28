@@ -215,23 +215,9 @@ namespace VectorFieldUI
             DisableIfExists("dropScaleX_Label");
             DisableIfExists("dropScaleY_Label");
 
-            SetLabelTextIfExists("DropdownScaleX_Label", "Primera función:");
-            SetLabelTextIfExists("DropdownScaleY_Label", "Segunda función:");
-
-            if (dropScaleX != null)
-            {
-                dropScaleX.gameObject.SetActive(true);
-                ConfigureFunctionDropdown(dropScaleX, FunctionPOptions, "X");
-            }
-
-            if (dropScaleY != null)
-            {
-                dropScaleY.gameObject.SetActive(true);
-                ConfigureFunctionDropdown(dropScaleY, FunctionQOptions, "Y");
-            }
-
-            if (statusLabel != null && statusLabel.name == "PanelTitleLabel")
-                statusLabel = null;
+            // Configurar dropdowns con las opciones de eje
+            ConfigureFunctionDropdown(inputScaleX, new[] { "X", "-X", "-Y", "Y", "-X-Y", "Y^2" }, 0);
+            ConfigureFunctionDropdown(inputScaleY, new[] { "Y", "-Y", "X", "-X", "X-Y", "0" }, 0);
 
             if (statusLabel == null)
                 statusLabel = FindStatusLabelFallback();
@@ -895,7 +881,74 @@ namespace VectorFieldUI
                 list.Add(btn);
             }
 
-            foreach (var pair in groups)
+            var go = new GameObject(objName, typeof(RectTransform), typeof(LayoutElement), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+
+            var le = go.GetComponent<LayoutElement>();
+            le.preferredHeight = 42f;
+            le.flexibleWidth   = 1f;
+
+            var img = go.GetComponent<Image>();
+            img.color = bgColor;
+
+            var btn = go.GetComponent<Button>();
+            var colors = btn.colors;
+            colors.normalColor      = bgColor;
+            colors.highlightedColor = bgColor * 1.15f;
+            colors.pressedColor     = bgColor * 0.80f;
+            colors.selectedColor    = bgColor * 1.15f;
+            colors.colorMultiplier  = 1f;
+            btn.colors = colors;
+
+            var textGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            textGO.transform.SetParent(go.transform, false);
+            var textRT = textGO.GetComponent<RectTransform>();
+            textRT.anchorMin = Vector2.zero;
+            textRT.anchorMax = Vector2.one;
+            textRT.offsetMin = textRT.offsetMax = Vector2.zero;
+
+            var tmp = textGO.GetComponent<TextMeshProUGUI>();
+            tmp.text      = label;
+            tmp.fontSize  = 16f;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.color     = Color.white;
+            tmp.alignment = TextAlignmentOptions.Center;
+
+            return btn;
+        }
+
+        TMP_Dropdown CreateRuntimeAxisDropdown(Transform parent, TMP_Dropdown templateSource, string objName)
+        {
+            // label
+            var labelGO = new GameObject(objName + "_Label", typeof(RectTransform), typeof(LayoutElement), typeof(TextMeshProUGUI));
+            labelGO.transform.SetParent(parent, false);
+            var ll = labelGO.GetComponent<LayoutElement>();
+            ll.preferredHeight = 24f;
+            var labelTextComp = labelGO.GetComponent<TextMeshProUGUI>();
+            labelTextComp.text = objName == "InputScaleX" ? "Primera funcion f(x,y):" : "Segunda funcion f(x,y):";
+            labelTextComp.fontSize = 18;
+            labelTextComp.color = new Color(0.85f, 0.85f, 0.85f);
+            labelTextComp.fontStyle = FontStyles.Bold;
+
+            // dropdown
+            var dropGO = new GameObject(objName, typeof(RectTransform), typeof(LayoutElement), typeof(CanvasRenderer), typeof(Image), typeof(TMP_Dropdown));
+            dropGO.transform.SetParent(parent, false);
+            var dle = dropGO.GetComponent<LayoutElement>();
+            dle.preferredHeight = 36f;
+            dle.flexibleWidth = 1f;
+
+            var bg = dropGO.GetComponent<Image>();
+            bg.color = new Color(0.15f, 0.15f, 0.15f, 0.9f);
+
+            var dropdown = dropGO.GetComponent<TMP_Dropdown>();
+            string[] firstFuncOpts  = { "X", "-X", "-Y", "Y", "-X-Y", "Y^2" };
+            string[] secondFuncOpts = { "Y", "-Y", "X", "-X", "X-Y", "0" };
+            string[] opts = objName == "InputScaleX" ? firstFuncOpts : secondFuncOpts;
+            foreach (var o in opts) dropdown.options.Add(new TMP_Dropdown.OptionData(o));
+            dropdown.SetValueWithoutNotify(0);
+
+            // template required for TMP_Dropdown to open
+            if (templateSource != null && templateSource.template != null)
             {
                 if (pair.Value.Count <= 1)
                     continue;
