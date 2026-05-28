@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 public class BoatMovement : MonoBehaviour
 {
     [SerializeField] GameObject boat;
-    [SerializeField] GameObject player;
+    [SerializeField] private GameObject player;
     [SerializeField] GameObject playerMovement;
     [SerializeField] GameObject playerTurn;
 
@@ -165,9 +165,16 @@ public class BoatMovement : MonoBehaviour
 
         //Se calcula el movimiento del barco
         Vector3 BoatMovement = Vector3.right * moveAmount * moveSpeed * Time.deltaTime;
-        Vector3 fieldForce = Vector3.zero;
-        if (manager != null)
-            fieldForce = manager.EvaluateFormula(boat.transform.position, GetOriginFromManager()) * fieldEffectStrength;
+        //Se calcula la fuerza del campo vectorial en la posición del barco.
+        Vector3 fieldForce = manager.EvaluateFormula(boat.transform.position, GetOriginFromManager()) * fieldEffectStrength;
+        //Validación de que el field force sea un vector válido
+        if (!IsValidVector(fieldForce))
+        {
+            fieldForce = Vector3.zero;
+            Debug.Log("Fuerza del campo inválida");
+        }
+        fieldForce = new Vector3(fieldForce.x, 0, fieldForce.y) * Time.deltaTime; //Se convierte a un vector 3D y se escala por deltaTime.
+        fieldForce = Vector3.ClampMagnitude(fieldForce, 0.1f);
         //Se suman las fuerzas calculadas para obtener el movimiento final del barco.
         Vector3 finalMovement = BoatMovement + fieldForce;
 
@@ -223,7 +230,7 @@ public class BoatMovement : MonoBehaviour
     }
 
     private bool IsValidVector(Vector3 v)
-{
+    {
     return
         !float.IsNaN(v.x) &&
         !float.IsNaN(v.y) &&
@@ -231,5 +238,50 @@ public class BoatMovement : MonoBehaviour
         !float.IsInfinity(v.x) &&
         !float.IsInfinity(v.y) &&
         !float.IsInfinity(v.z);
-}
+    }
+
+    public void SetPlayer()
+    {
+        if (GameManager.Instance == null)
+        {
+            Debug.LogWarning("BoatMovement: GameManager.Instance is null.");
+            return;
+        }
+
+        player = GameManager.Instance.playerPrefab;
+        if (player == null)
+        {
+            Debug.LogWarning("BoatMovement: Player reference is null in GameManager.");
+            return;
+        }
+
+        var locomotion = player.transform.Find("Locomotion");
+        if (locomotion != null)
+        {
+            var move = locomotion.Find("Move");
+            if (move != null)
+                playerMovement = move.gameObject;
+
+            var turn = locomotion.Find("Turn");
+            if (turn != null)
+                playerTurn = turn.gameObject;
+        }
+
+        if (playerMovement == null)
+        {
+            Debug.LogWarning("BoatMovement: Player movement reference is null in GameManager.");
+        }
+        else
+        {
+            Debug.Log("BoatMovement: Player movement reference set from GameManager.");
+        }
+        if (playerTurn == null)
+        {
+            Debug.LogWarning("BoatMovement: Player turn reference is null in GameManager.");
+        }
+        else
+        {
+            Debug.Log("BoatMovement: Player turn reference set from GameManager.");
+        }
+    }
 }
