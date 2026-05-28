@@ -210,8 +210,8 @@ namespace VectorFieldUI
             SetLabelTextIfExists("InputScaleY_Label", "Segunda funcion f(x,y):");
 
             // Configurar dropdowns con las opciones de eje
-            ConfigureFunctionDropdown(inputScaleX, new[] { "X", "-X", "-Y", "Y", "-X-Y" }, 0);
-            ConfigureFunctionDropdown(inputScaleY, new[] { "Y", "-Y", "X", "-X", "x-y" }, 0);
+            ConfigureFunctionDropdown(inputScaleX, new[] { "X", "-X", "-Y", "Y", "-X-Y", "Y^2" }, 0);
+            ConfigureFunctionDropdown(inputScaleY, new[] { "Y", "-Y", "X", "-X", "X-Y", "0" }, 0);
 
             // Timer visible
             if (statusLabel == null)
@@ -565,8 +565,8 @@ namespace VectorFieldUI
             bg.color = new Color(0.15f, 0.15f, 0.15f, 0.9f);
 
             var dropdown = dropGO.GetComponent<TMP_Dropdown>();
-            string[] firstFuncOpts  = { "X", "-X", "-Y", "Y", "-X-Y" };
-            string[] secondFuncOpts = { "Y", "-Y", "X", "-X", "x-y" };
+            string[] firstFuncOpts  = { "X", "-X", "-Y", "Y", "-X-Y", "Y^2" };
+            string[] secondFuncOpts = { "Y", "-Y", "X", "-X", "X-Y", "0" };
             string[] opts = objName == "InputScaleX" ? firstFuncOpts : secondFuncOpts;
             foreach (var o in opts) dropdown.options.Add(new TMP_Dropdown.OptionData(o));
             dropdown.SetValueWithoutNotify(0);
