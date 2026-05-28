@@ -236,10 +236,29 @@ public class BoatMovement : MonoBehaviour
 
     public void SetPlayer()
     {
+        if (GameManager.Instance == null)
+        {
+            Debug.LogWarning("BoatMovement: GameManager instance is missing.");
+            return;
+        }
+
         player = GameManager.Instance.playerPrefab;
-        if(player != null) Debug.Log("Prefab llamado correctamente");
-        playerMovement = player.transform.Find("Locomotion").Find("Move").gameObject;
-        if(playerMovement == null)
+        if (player == null)
+        {
+            Debug.LogWarning("BoatMovement: Player reference is null in GameManager.");
+            return;
+        }
+
+        Transform locomotion = player.transform.Find("Locomotion");
+        if (locomotion == null)
+        {
+            Debug.LogWarning("BoatMovement: Locomotion object not found on player.");
+            return;
+        }
+
+        Transform moveTransform = locomotion.Find("Move");
+        playerMovement = moveTransform != null ? moveTransform.gameObject : null;
+        if (playerMovement == null)
         {
             Debug.LogWarning("BoatMovement: Player movement reference is null in GameManager.");
         }
@@ -247,22 +266,18 @@ public class BoatMovement : MonoBehaviour
         {
             Debug.Log("BoatMovement: Player movement reference set from GameManager.");
         }
-        playerTurn = player.transform.Find("Locomotion").Find("Turn").gameObject;
-            if(playerTurn == null)
-            {
-                Debug.LogWarning("BoatMovement: Player turn reference is null in GameManager.");
-            }
-            else
-            {
-                Debug.Log("BoatMovement: Player turn reference set from GameManager.");
-            }
-        if(player == null)
+
+        Transform turnTransform = locomotion.Find("Turn");
+        playerTurn = turnTransform != null ? turnTransform.gameObject : null;
+        if (playerTurn == null)
         {
-            Debug.LogWarning("BoatMovement: Player reference is null in GameManager.");
+            Debug.LogWarning("BoatMovement: Player turn reference is null in GameManager.");
         }
         else
         {
-            Debug.Log("BoatMovement: Player reference set from GameManager.");
+            Debug.Log("BoatMovement: Player turn reference set from GameManager.");
         }
+
+        Debug.Log("BoatMovement: Player reference set from GameManager.");
     }
 }
