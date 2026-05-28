@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace VectorField
 {
@@ -99,6 +102,8 @@ namespace VectorField
         public float oceanFrontBackInset = 0f;
         public bool  excludeSolidObjectsOverWater = true;
         public bool  allowUnderBoats = true;
+        [Tooltip("Si está activo, los puntos del rectángulo trasero se validan con filtros de colisión/isla.")]
+        public bool useBackRectValidation = true;
 
         [Header("Color temporal del campo")]
         public bool forceFieldColor = false;
@@ -107,6 +112,9 @@ namespace VectorField
         [Header("Deteccion automatica de isla")]
         public bool autoDetectIslandFromScene = true;
         public string islandRootNameHint = "LandMass";
+        [Tooltip("Si esta activo, intenta detectar la isla por ruta de assets (ej. Assets/RPG Tiny Fantasy Forest PBR).")]
+        public bool useIslandAssetFolderForBounds = true;
+        public string islandAssetFolderPath = "Assets/RPG Tiny Fantasy Forest PBR";
 
         [Header("Formula activa")]
         public FieldFormula formula    = FieldFormula.RadialOutward;
@@ -127,6 +135,20 @@ namespace VectorField
         [Tooltip("Multiplica el tamaño del rectángulo detrás del mapa (1 = tamaño isla). Útil para 'un poco más grande'.")]
         [Min(0.5f)]
         public float backRectScaleMultiplier = 1.5f;
+        [Tooltip("Separación mínima entre la isla y el rectángulo trasero.")]
+        [Min(0f)]
+        public float backRectIslandPadding = 2f;
+        [Tooltip("Si se asigna, este Transform marca el límite frontal del rectángulo trasero (ej. panel o playa).")]
+        public Transform backRectFrontLimit;
+        [Tooltip("Si está activo, intenta resolver el límite frontal por nombre cuando no está asignado.")]
+        public bool autoResolveBackRectFrontLimit = true;
+        [Tooltip("Nombre del objeto que marca el límite frontal (ej. Panel).")]
+        public string backRectFrontLimitName = "Panel";
+        [Tooltip("Desplaza el centro del rectángulo trasero (X,Z) para ajustar el origen del campo.")]
+        public Vector2 backRectCenterOffset = Vector2.zero;
+        [Tooltip("Desplaza el centro hacia el borde trasero del rectángulo (0 = centro, 1 = borde trasero).")]
+        [Range(0f, 1f)]
+        public float backRectBackBias = 0f;
 
         [Header("Punto Objetivo (solo para TargetPoint)")]
         public bool    useTarget = false;
@@ -356,6 +378,7 @@ namespace VectorField
             DetectPrefabOrientation();
             RefreshIslandBoundsFromScene();
             RefreshOceanBoundsFromScene();
+            TryResolveBackRectFrontLimit();
 
             if (!_hasOceanBounds)
                 Debug.LogWarning("[VFM] No se detectaron bounds del océano. Usando grid/fallback; ajusta oceanNameHint si hace falta.", this);
@@ -386,17 +409,106 @@ namespace VectorField
             var center = fieldCenterTransform.position;
             evalOrigin = new Vector2(center.x, center.z);
             zoneCenter = evalOrigin;
-            
-            // Expandir todos los campos vectoriales en el rectángulo del agua
-            if (_hasOceanBounds)
+
+            // Forzar un rectángulo detrás de la isla como área de expansión
+            bool backRectReady = false;
+            float backMinX = 0f, backMaxX = 0f, backMinZ = 0f, backMaxZ = 0f;
+            Vector2 backRectCenter = evalOrigin;
+
+                bool hasBackFrontLimit = backRectFrontLimit != null;
+                    bool backIsMinZ = true;
+                    if (_hasOceanBounds && (_hasIslandBounds || hasBackFrontLimit))
             {
-                // Usar el rectángulo completo del océano para distribuir vectores
-                positions = BuildDistributedOceanPointsFromCenter(desiredCount, _oceanBounds, evalOrigin);
+                        if (_hasIslandBounds)
+                        {
+                            backRectReady = TryComputeBackRectBehindIsland(
+                                _oceanBounds,
+                                _islandBounds,
+                                backRectScaleMultiplier,
+                                backRectEdgeInset,
+                                backRectIslandPadding,
+                                backRectFrontLimit,
+                                out backMinX,
+                                out backMaxX,
+                                out backMinZ,
+                                out backMaxZ,
+                                out backRectCenter,
+                                out backIsMinZ);
+                        }
+                        else if (hasBackFrontLimit)
+                        {
+                            backRectReady = TryComputeBackRectFromFrontLimit(
+                                _oceanBounds,
+                                backRectEdgeInset,
+                                backRectIslandPadding,
+                                backRectFrontLimit,
+                                out backMinX,
+                                out backMaxX,
+                                out backMinZ,
+                                out backMaxZ,
+                                out backRectCenter,
+                                out backIsMinZ);
+                        }
+            }
+
+                    if (!backRectReady && _hasOceanBounds)
+                    {
+                        float frontZ = backRectFrontLimit != null
+                            ? backRectFrontLimit.position.z
+                            : _oceanBounds.center.z;
+
+                        backRectReady = TryComputeBackRectFromFrontLimitZ(
+                            _oceanBounds,
+                            backRectEdgeInset,
+                            backRectIslandPadding,
+                            frontZ,
+                            out backMinX,
+                            out backMaxX,
+                            out backMinZ,
+                            out backMaxZ,
+                            out backRectCenter,
+                            out backIsMinZ);
+                    }
+
+            if (backRectReady)
+            {
+                if (backRectCenterOffset != Vector2.zero)
+                {
+                    backRectCenter += backRectCenterOffset;
+                    backMinX += backRectCenterOffset.x;
+                    backMaxX += backRectCenterOffset.x;
+                    backMinZ += backRectCenterOffset.y;
+                    backMaxZ += backRectCenterOffset.y;
+
+                    if (_hasOceanBounds)
+                    {
+                        ShiftRect1D(_oceanBounds.min.x, _oceanBounds.max.x, ref backMinX, ref backMaxX);
+                        ShiftRect1D(_oceanBounds.min.z, _oceanBounds.max.z, ref backMinZ, ref backMaxZ);
+                        backRectCenter = new Vector2((backMinX + backMaxX) * 0.5f, (backMinZ + backMaxZ) * 0.5f);
+                    }
+                }
+
+                if (backRectBackBias > 0f)
+                {
+                    float backEdgeZ = backIsMinZ ? backMinZ : backMaxZ;
+                    backRectCenter = new Vector2(
+                        backRectCenter.x,
+                        Mathf.Lerp(backRectCenter.y, backEdgeZ, backRectBackBias));
+                }
+
+                Vector3 centerWorld = new Vector3(backRectCenter.x, waterSurfaceY + spawnYOffset, backRectCenter.y);
+                if (fieldCenterTransform != null)
+                    fieldCenterTransform.position = centerWorld;
+
+                evalOrigin = backRectCenter;
+                zoneCenter = evalOrigin;
+
+                positions = BuildBackRectPointsFiltered(desiredCount, backMinX, backMaxX, backMinZ, backMaxZ, backIsMinZ);
             }
             else
             {
-                // Fallback: grid centrado en la bolita sin filtros
-                positions = BuildGrid2DNoFilters(desiredCount, fieldRadius, evalOrigin);
+                Debug.LogError("[VFM] No se pudo calcular el rectángulo trasero. Ajusta island bounds y/o backRectFrontLimit.", this);
+                return;
             }
 
             if (positions == null || positions.Count == 0)
@@ -588,6 +700,226 @@ namespace VectorField
             ShiftRect1D(oceanBounds.min.z, oceanBounds.max.z, ref minZ, ref maxZ);
 
             return (maxX - minX) > 0.01f && (maxZ - minZ) > 0.01f;
+        }
+
+        bool TryComputeBackRectBehindIsland(
+            Bounds oceanBounds,
+            Bounds islandBounds,
+            float scaleMultiplier,
+            float edgeInset,
+            float islandPadding,
+            Transform frontLimit,
+            out float minX,
+            out float maxX,
+            out float minZ,
+            out float maxZ,
+            out Vector2 center,
+            out bool backIsMinZ)
+        {
+            minX = maxX = minZ = maxZ = 0f;
+            center = Vector2.zero;
+            backIsMinZ = true;
+
+            float oceanMinX = oceanBounds.min.x + Mathf.Max(0f, edgeInset);
+            float oceanMaxX = oceanBounds.max.x - Mathf.Max(0f, edgeInset);
+            float oceanMinZ = oceanBounds.min.z + Mathf.Max(0f, edgeInset);
+            float oceanMaxZ = oceanBounds.max.z - Mathf.Max(0f, edgeInset);
+
+            if (oceanMinX >= oceanMaxX || oceanMinZ >= oceanMaxZ)
+                return false;
+
+            float width = Mathf.Max(1f, islandBounds.size.x * Mathf.Max(0.5f, scaleMultiplier));
+            float depth = Mathf.Max(1f, islandBounds.size.z * Mathf.Max(0.5f, scaleMultiplier));
+
+            float maxWidth = Mathf.Max(1f, oceanMaxX - oceanMinX);
+            float maxDepth = Mathf.Max(1f, oceanMaxZ - oceanMinZ);
+            width = Mathf.Min(width, maxWidth);
+            depth = Mathf.Min(depth, maxDepth);
+
+            float islandCenterX = islandBounds.center.x;
+            float islandCenterZ = islandBounds.center.z;
+
+            float distToMin = Mathf.Abs(islandCenterZ - oceanBounds.min.z);
+            float distToMax = Mathf.Abs(oceanBounds.max.z - islandCenterZ);
+            backIsMinZ = distToMin >= distToMax;
+
+            float pad = Mathf.Max(0f, islandPadding);
+
+            float centerX = Mathf.Clamp(islandCenterX, oceanMinX + width * 0.5f, oceanMaxX - width * 0.5f);
+
+            float frontLimitZ = frontLimit != null ? frontLimit.position.z : float.NaN;
+
+            if (backIsMinZ)
+            {
+                float desiredMaxZ = islandBounds.min.z - pad;
+                float desiredMinZ = desiredMaxZ - depth;
+
+                minZ = desiredMinZ;
+                maxZ = desiredMaxZ;
+
+                ShiftRect1D(oceanMinZ, oceanMaxZ, ref minZ, ref maxZ);
+
+                if (!float.IsNaN(frontLimitZ))
+                {
+                    maxZ = Mathf.Min(maxZ, frontLimitZ);
+                    minZ = Mathf.Min(minZ, maxZ - depth);
+                    ShiftRect1D(oceanMinZ, oceanMaxZ, ref minZ, ref maxZ);
+                }
+
+                if (maxZ > islandBounds.min.z - pad)
+                    return false;
+            }
+            else
+            {
+                float desiredMinZ = islandBounds.max.z + pad;
+                float desiredMaxZ = desiredMinZ + depth;
+
+                minZ = desiredMinZ;
+                maxZ = desiredMaxZ;
+
+                ShiftRect1D(oceanMinZ, oceanMaxZ, ref minZ, ref maxZ);
+
+                if (!float.IsNaN(frontLimitZ))
+                {
+                    minZ = Mathf.Max(minZ, frontLimitZ);
+                    maxZ = Mathf.Max(maxZ, minZ + depth);
+                    ShiftRect1D(oceanMinZ, oceanMaxZ, ref minZ, ref maxZ);
+                }
+
+                if (minZ < islandBounds.max.z + pad)
+                    return false;
+            }
+
+            minX = centerX - width * 0.5f;
+            maxX = centerX + width * 0.5f;
+            ShiftRect1D(oceanMinX, oceanMaxX, ref minX, ref maxX);
+
+            if (minX >= maxX || minZ >= maxZ)
+                return false;
+
+            center = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
+            return true;
+        }
+
+        bool TryComputeBackRectFromFrontLimit(
+            Bounds oceanBounds,
+            float edgeInset,
+            float frontPadding,
+            Transform frontLimit,
+            out float minX,
+            out float maxX,
+            out float minZ,
+            out float maxZ,
+            out Vector2 center,
+            out bool backIsMinZ)
+        {
+            minX = maxX = minZ = maxZ = 0f;
+            center = Vector2.zero;
+            backIsMinZ = true;
+
+            if (frontLimit == null)
+                return false;
+
+            float frontZ = frontLimit.position.z;
+            return TryComputeBackRectFromFrontLimitZ(
+                oceanBounds,
+                edgeInset,
+                frontPadding,
+                frontZ,
+                out minX,
+                out maxX,
+                out minZ,
+                out maxZ,
+                out center,
+                out backIsMinZ);
+        }
+
+        bool TryComputeBackRectFromFrontLimitZ(
+            Bounds oceanBounds,
+            float edgeInset,
+            float frontPadding,
+            float frontZ,
+            out float minX,
+            out float maxX,
+            out float minZ,
+            out float maxZ,
+            out Vector2 center,
+            out bool backIsMinZ)
+        {
+            minX = maxX = minZ = maxZ = 0f;
+            center = Vector2.zero;
+            backIsMinZ = true;
+
+            float oceanMinX = oceanBounds.min.x + Mathf.Max(0f, edgeInset);
+            float oceanMaxX = oceanBounds.max.x - Mathf.Max(0f, edgeInset);
+            float oceanMinZ = oceanBounds.min.z + Mathf.Max(0f, edgeInset);
+            float oceanMaxZ = oceanBounds.max.z - Mathf.Max(0f, edgeInset);
+
+            if (oceanMinX >= oceanMaxX || oceanMinZ >= oceanMaxZ)
+                return false;
+
+            backIsMinZ = frontZ >= oceanBounds.center.z;
+
+            float pad = Mathf.Max(0f, frontPadding);
+
+            if (backIsMinZ)
+            {
+                minZ = oceanMinZ;
+                maxZ = Mathf.Min(frontZ - pad, oceanMaxZ);
+            }
+            else
+            {
+                minZ = Mathf.Max(frontZ + pad, oceanMinZ);
+                maxZ = oceanMaxZ;
+            }
+
+            // Si el límite frontal está fuera del océano, forzar un rectángulo válido detrás.
+            if (minZ >= maxZ)
+            {
+                if (backIsMinZ)
+                {
+                    maxZ = oceanBounds.center.z;
+                    minZ = oceanMinZ;
+                }
+                else
+                {
+                    minZ = oceanBounds.center.z;
+                    maxZ = oceanMaxZ;
+                }
+
+                if (minZ >= maxZ)
+                    return false;
+            }
+
+            minX = oceanMinX;
+            maxX = oceanMaxX;
+
+            center = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
+            return true;
+        }
+
+        void TryResolveBackRectFrontLimit()
+        {
+            if (backRectFrontLimit != null || !autoResolveBackRectFrontLimit)
+                return;
+
+            var candidates = new List<string>(4);
+            if (!string.IsNullOrWhiteSpace(backRectFrontLimitName))
+                candidates.Add(backRectFrontLimitName);
+            candidates.Add("Panel");
+            candidates.Add("PanelUI");
+            candidates.Add("UI Panel");
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var go = GameObject.Find(candidates[i]);
+                if (go == null)
+                    continue;
+
+                backRectFrontLimit = go.transform;
+                Debug.Log($"[VFM] backRectFrontLimit asignado por nombre: {go.name}", this);
+                return;
+            }
         }
 
         Transform GetArrowsParent()
@@ -1201,6 +1533,71 @@ namespace VectorField
             return BuildPackedRectanglePoints(n, denseMinX, denseMaxX, denseMinZ, denseMaxZ);
         }
 
+        List<Vector2> BuildBackRectPointsFiltered(int n, float minX, float maxX, float minZ, float maxZ, bool backIsMinZ)
+        {
+            var basePoints = useDensePacking
+                ? BuildDensePackedRectanglePoints(n, minX, maxX, minZ, maxZ)
+                : BuildPackedRectanglePoints(n, minX, maxX, minZ, maxZ);
+
+            var pts = new List<Vector2>(n);
+            for (int i = 0; i < basePoints.Count && pts.Count < n; i++)
+            {
+                var pt = basePoints[i];
+                if (_hasIslandBounds)
+                {
+                    float frontZ = backIsMinZ ? (_islandBounds.min.z - backRectIslandPadding) : (_islandBounds.max.z + backRectIslandPadding);
+                    if (backIsMinZ && pt.y > frontZ)
+                        continue;
+                    if (!backIsMinZ && pt.y < frontZ)
+                        continue;
+                }
+                if (useBackRectValidation)
+                {
+                    if (avoidUnderIslandWater && IsPointUnderIsland(pt))
+                        continue;
+                    if (!IsPointValidForSpawn(pt))
+                        continue;
+                }
+                pts.Add(pt);
+            }
+
+            int attempts = 0;
+            int maxAttempts = Mathf.Max(6000, n * 30);
+            while (pts.Count < n && attempts < maxAttempts)
+            {
+                attempts++;
+                float x = UnityEngine.Random.Range(minX, maxX);
+                float z = UnityEngine.Random.Range(minZ, maxZ);
+                var pt = new Vector2(x, z);
+
+                if (_hasIslandBounds)
+                {
+                    float frontZ = backIsMinZ ? (_islandBounds.min.z - backRectIslandPadding) : (_islandBounds.max.z + backRectIslandPadding);
+                    if (backIsMinZ && pt.y > frontZ)
+                        continue;
+                    if (!backIsMinZ && pt.y < frontZ)
+                        continue;
+                }
+                if (useBackRectValidation)
+                {
+                    if (avoidUnderIslandWater && IsPointUnderIsland(pt))
+                        continue;
+                    if (!IsPointValidForSpawn(pt))
+                        continue;
+                }
+
+                pts.Add(pt);
+            }
+
+            if (pts.Count == 0)
+            {
+                // Fallback: devolver puntos base sin filtros para no quedarnos sin vectores.
+                return basePoints;
+            }
+
+            return pts;
+        }
+
         void ApplyBackSectorSlice(ref float minX, ref float maxX)
         {
             if (!useBackSectors)
@@ -1296,6 +1693,17 @@ namespace VectorField
             if (exclusionRadius > 0.01f && Vector2.Distance(p, islandCenter) < exclusionRadius)
                 return true;
 
+            if (_hasIslandBounds)
+            {
+                float pad = Mathf.Max(islandExclusionPadding, backRectIslandPadding);
+                float minX = _islandBounds.min.x - pad;
+                float maxX = _islandBounds.max.x + pad;
+                float minZ = _islandBounds.min.z - pad;
+                float maxZ = _islandBounds.max.z + pad;
+                if (p.x >= minX && p.x <= maxX && p.y >= minZ && p.y <= maxZ)
+                    return true;
+            }
+
             if (!usePhysicsLandFilter)
                 return false;
 
@@ -1315,14 +1723,168 @@ namespace VectorField
             if (!autoDetectIslandFromScene)
                 return;
 
-            if (!TryDetectIslandBounds(out Vector2 detectedCenter, out float detectedRadius, out Bounds detectedBounds))
+            if (useIslandAssetFolderForBounds && TryDetectIslandBoundsFromAssetFolder(out Vector2 detectedCenter, out float detectedRadius, out Bounds detectedBounds))
+            {
+                islandCenter = detectedCenter;
+                islandRadius = detectedRadius;
+                _islandBounds = detectedBounds;
+                _hasIslandBounds = true;
+                return;
+            }
+
+            if (!TryDetectIslandBounds(out Vector2 detectedCenter2, out float detectedRadius2, out Bounds detectedBounds2))
                 return;
 
-            islandCenter = detectedCenter;
-            islandRadius = detectedRadius;
-            _islandBounds = detectedBounds;
+            islandCenter = detectedCenter2;
+            islandRadius = detectedRadius2;
+            _islandBounds = detectedBounds2;
             _hasIslandBounds = true;
         }
+
+        bool TryDetectIslandBoundsFromAssetFolder(out Vector2 center, out float radius, out Bounds bounds)
+        {
+            center = islandCenter;
+            radius = islandRadius;
+            bounds = default;
+
+            #if UNITY_EDITOR
+            if (string.IsNullOrWhiteSpace(islandAssetFolderPath))
+                return false;
+
+            var scene = SceneManager.GetActiveScene();
+            if (!scene.IsValid() || !scene.isLoaded)
+                return false;
+
+            var roots = scene.GetRootGameObjects();
+            if (roots == null || roots.Length == 0)
+                return false;
+
+            bool found = false;
+            Bounds localBounds = new Bounds();
+
+            for (int i = 0; i < roots.Length; i++)
+            {
+                var root = roots[i];
+                if (root == null)
+                    continue;
+
+                var renderers = root.GetComponentsInChildren<Renderer>(true);
+                for (int r = 0; r < renderers.Length; r++)
+                {
+                    var ren = renderers[r];
+                    if (ren == null)
+                        continue;
+
+                    if (!IsRendererFromIslandFolder(ren))
+                        continue;
+
+                    if (!found)
+                    {
+                        localBounds = ren.bounds;
+                        found = true;
+                    }
+                    else
+                    {
+                        localBounds.Encapsulate(ren.bounds);
+                    }
+                }
+
+                var colliders = root.GetComponentsInChildren<Collider>(true);
+                for (int c = 0; c < colliders.Length; c++)
+                {
+                    var col = colliders[c];
+                    if (col == null)
+                        continue;
+
+                    if (!IsColliderFromIslandFolder(col))
+                        continue;
+
+                    if (!found)
+                    {
+                        localBounds = col.bounds;
+                        found = true;
+                    }
+                    else
+                    {
+                        localBounds.Encapsulate(col.bounds);
+                    }
+                }
+            }
+
+            if (!found)
+                return false;
+
+            bounds = localBounds;
+            center = new Vector2(localBounds.center.x, localBounds.center.z);
+            radius = Mathf.Max(localBounds.extents.x, localBounds.extents.z);
+            return radius > 0.01f;
+            #else
+            return false;
+            #endif
+        }
+
+        #if UNITY_EDITOR
+        bool IsRendererFromIslandFolder(Renderer ren)
+        {
+            if (ren == null)
+                return false;
+
+            if (PrefabUtility.GetCorrespondingObjectFromSource(ren.gameObject) is GameObject prefab)
+            {
+                string path = AssetDatabase.GetAssetPath(prefab);
+                if (!string.IsNullOrEmpty(path) && path.StartsWith(islandAssetFolderPath, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            if (ren is SkinnedMeshRenderer skinned && skinned.sharedMesh != null)
+            {
+                string path = AssetDatabase.GetAssetPath(skinned.sharedMesh);
+                if (!string.IsNullOrEmpty(path) && path.StartsWith(islandAssetFolderPath, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            else if (ren is MeshRenderer)
+            {
+                var mf = ren.GetComponent<MeshFilter>();
+                if (mf != null && mf.sharedMesh != null)
+                {
+                    string path = AssetDatabase.GetAssetPath(mf.sharedMesh);
+                    if (!string.IsNullOrEmpty(path) && path.StartsWith(islandAssetFolderPath, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+            }
+
+            var mats = ren.sharedMaterials;
+            if (mats != null)
+            {
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var mat = mats[i];
+                    if (mat == null)
+                        continue;
+                    string path = AssetDatabase.GetAssetPath(mat);
+                    if (!string.IsNullOrEmpty(path) && path.StartsWith(islandAssetFolderPath, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool IsColliderFromIslandFolder(Collider col)
+        {
+            if (col == null)
+                return false;
+
+            if (PrefabUtility.GetCorrespondingObjectFromSource(col.gameObject) is GameObject prefab)
+            {
+                string path = AssetDatabase.GetAssetPath(prefab);
+                if (!string.IsNullOrEmpty(path) && path.StartsWith(islandAssetFolderPath, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+        #endif
 
         bool TryDetectIslandBounds(out Vector2 center, out float radius, out Bounds bounds)
         {
