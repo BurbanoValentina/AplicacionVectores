@@ -1,0 +1,1 @@
+C:\Users\NeoAd\Documents\GitHub\AplicacionVectores\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\build\intermediates\cxx\RelWithDebInfo\4wi393t1\obj\arm64-v8a
