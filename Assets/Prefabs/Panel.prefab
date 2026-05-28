@@ -2122,10 +2122,13 @@ MonoBehaviour:
   oceanFrontBackInset: 2
   excludeSolidObjectsOverWater: 0
   allowUnderBoats: 1
+  useBackRectValidation: 1
   forceFieldColor: 1
   forcedFieldColor: {r: 1, g: 0, b: 0, a: 1}
   autoDetectIslandFromScene: 1
   islandRootNameHint: LandMass
+  useIslandAssetFolderForBounds: 1
+  islandAssetFolderPath: Assets/RPG Tiny Fantasy Forest PBR
   formula: 0
   useFunctionInputs: 0
   functionP: x
@@ -2133,6 +2136,12 @@ MonoBehaviour:
   useSingleBackRectSameAsIsland: 1
   backRectEdgeInset: 0.5
   backRectScaleMultiplier: 1.5
+  backRectIslandPadding: 2
+  backRectFrontLimit: {fileID: 0}
+  autoResolveBackRectFrontLimit: 1
+  backRectFrontLimitName: Panel
+  backRectCenterOffset: {x: 0, y: 0}
+  backRectBackBias: 0.4
   useTarget: 1
   target: {x: 10, y: 0, z: 10}
   showFieldCenterMarker: 1

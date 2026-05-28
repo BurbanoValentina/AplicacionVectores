@@ -15,7 +15,7 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
         else
         {
             Instance = this;
-            DontDestroyOnLoad(this);
+            DontDestroyOnLoad(gameObject);
         }
     }
     void Start()

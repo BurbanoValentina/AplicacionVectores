@@ -23,9 +23,19 @@ public class MultiplayerSpawner : MonoBehaviour
             Debug.LogWarning("Player has already spawned. Skipping spawn.");
            return; 
         } 
+        if (!PhotonNetwork.InRoom)
+        {
+            Debug.LogWarning("SpawnPlayer skipped: not in room yet.");
+            return;
+        }
         if (playerIndex < 0 || playerIndex >= spawnPoints.Length)
         {
             Debug.LogError("Invalid player index for spawning: " + playerIndex);
+            return;
+        }
+        if (playerPrefab == null)
+        {
+            Debug.LogError("Player prefab is not assigned in MultiplayerSpawner.");
             return;
         }
         Transform spawnPoint = spawnPoints[playerIndex];
@@ -33,18 +43,22 @@ public class MultiplayerSpawner : MonoBehaviour
         Debug.Log("PlayerSpawned");
         hasSpawned = true;
         PlayerEvent = GameObject.Find("PlayerSpawnEvent");
-        PlayerEvent.GetComponent<PlayerSpawnEvent>().playerSpawend = true;
+        if (PlayerEvent != null)
+        {
+            var evt = PlayerEvent.GetComponent<PlayerSpawnEvent>();
+            if (evt != null)
+                evt.playerSpawend = true;
+        }
     }
 
     
     IEnumerator WaitForConnectionReady()
     {
-        while (!PhotonNetwork.InRoom && !PhotonNetwork.IsConnectedAndReady)
+        while (!PhotonNetwork.InRoom)
         {
             Debug.Log("Waiting for connection to be ready...");
             yield return null;
         }
-        yield return new WaitForSeconds(10f);
         SpawnPlayer(0); // Spawn player after connection is ready
     }
 
