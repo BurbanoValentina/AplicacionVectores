@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 using VectorField;
@@ -26,11 +25,11 @@ namespace VectorFieldUI
         public float        waterRadius = 45f;
         public Vector2      waterCenter = Vector2.zero;
 
-        [Header("Funciones f(x,y) (reusamos estos dropdowns)")]
+        [Header("Selección de función (dropdown)")]
         [Tooltip("Primera función P(x,y)")]
-        public TMP_Dropdown dropScaleX;
+        public TMP_Dropdown inputScaleX;
         [Tooltip("Segunda función Q(x,y)")]
-        public TMP_Dropdown dropScaleY;
+        public TMP_Dropdown inputScaleY;
 
         [Header("Botones")]
         public Button btnGenerate;
@@ -49,32 +48,14 @@ namespace VectorFieldUI
         [Tooltip("Si está activo, también aplica el estilo del panel cuando NO está en Play (para ocultar los controles legacy y mostrar el título).")]
         public bool applyStyleInEditMode = true;
         [Tooltip("Tamaño del panel (RectTransform) para evitar espacio vacío.")]
-        public Vector2 panelSize = new Vector2(480f, 580f);
+        public Vector2 panelSize = new Vector2(480f, 520f);
         [Tooltip("Fuerza que el ScrollRect arranque arriba (para que se vea el título).")]
         public bool forceScrollTop = true;
 
         const int COUNTDOWN_SECONDS = 10;
-        const string PanelDescriptionText =
-            "Selecciona la primera y la segunda función. Luego pulsa Generar Campo.";
-
-        static readonly string[] FunctionPOptions = { "X", "-X", "-Y", "Y", "-X-Y" };
-        static readonly string[] FunctionQOptions = { "Y", "-Y", "X", "-X", "X-Y" };
-
-        static readonly HashSet<string> HiddenScrollContentNames = new HashSet<string>
-        {
-            "FunctionsSectionLabel", "CountDesc", "CountFunctionLabel",
-            "FormulaFunctionLabel", "FormulaDesc", "ZoneDesc", "DropdownZone_Label",
-            "ScaleXDesc", "ScaleYDesc", "InputScaleX", "InputScaleY",
-            "InputScaleX_Label", "InputScaleY_Label", "Dropdown", "DropdownZone",
-            "dropScaleX_Label", "dropScaleY_Label", "ButtonsSpacer", "Sep",
-        };
-
         Coroutine _countdown;
         string _pendingP;
         string _pendingQ;
-        bool _uiInitialized;
-        GraphicRaycaster _panelRaycaster;
-        readonly List<RaycastResult> _raycastHits = new List<RaycastResult>();
 
         void Awake()
         {
@@ -87,11 +68,15 @@ namespace VectorFieldUI
 
         void OnEnable()
         {
-            if (!Application.isPlaying && !applyStyleInEditMode)
+            if (Application.isPlaying)
                 return;
 
-            if (!Application.isPlaying)
-                ApplyPanelVisualStyle();
+            if (!applyStyleInEditMode)
+                return;
+
+            // En modo edición: ocultar panel legacy y asegurar título/scroll/layout.
+            ApplyPanelVisualStyle();
+            ApplyPanelLayoutTweaks();
         }
 
         void OnValidate()
@@ -106,9 +91,6 @@ namespace VectorFieldUI
                 return;
 
             ApplyPanelVisualStyle();
-            PurgeDuplicateButtons();
-            ResolveButtonReferences();
-            WireButtonListeners();
             ApplyPanelLayoutTweaks();
 
             if (fieldManager == null)
@@ -125,6 +107,18 @@ namespace VectorFieldUI
             if (forceScrollTop)
                 Invoke(nameof(ForceScrollToTop), 0.08f);
 
+            // Validar y agregar listeners a botones
+            try
+            {
+                if (btnGenerate != null) btnGenerate.onClick.AddListener(OnGenerate);
+                if (btnDelete != null)   btnDelete.onClick.AddListener(OnDelete);
+                if (btnGenerateDucks != null) btnGenerateDucks.onClick.AddListener(OnGenerateDucks);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"Error al asignar listeners de botones: {ex.Message}", this);
+            }
+
             if (duckSpawner == null)
                 duckSpawner = FindFirstObjectByType<DuckFieldSpawner>();
             if (duckSpawner == null)
@@ -133,14 +127,6 @@ namespace VectorFieldUI
             SetDucksButtonEnabled(false);
 
             SetTimer(COUNTDOWN_SECONDS);
-        }
-
-        void Update()
-        {
-            if (!Application.isPlaying)
-                return;
-
-            HandleMouseClickFallback();
         }
 
         void ApplyPanelLayoutTweaks()
@@ -177,71 +163,86 @@ namespace VectorFieldUI
 
         void ApplyPanelVisualStyle()
         {
-            if (_uiInitialized && Application.isPlaying)
-                return;
+            HideLegacyFunctionInputFields();
 
-            if (dropScaleX != null) dropScaleX.gameObject.SetActive(true);
-            if (dropScaleY != null) dropScaleY.gameObject.SetActive(true);
+            // Ocultar controles legacy (formula/zona/reset). Conservamos SOLO el dropdown de cantidad.
+            if (dropCount) dropCount.gameObject.SetActive(true);
+            if (dropFormula) dropFormula.gameObject.SetActive(false);
+            if (dropZone) dropZone.gameObject.SetActive(false);
+            if (btnReset) btnReset.gameObject.SetActive(false);
 
-            HideLegacyPanelControls();
-            EnforceScrollContentWhitelist();
-            ImproveCanvasReadability();
-            ResolveButtonReferences();
-            PurgeDuplicateButtons();
-            WireDropdownsFromPrefab();
+            DisableIfExists("FunctionsSectionLabel");
+            // NO ocultar CountFunctionLabel: es el label de la cantidad.
+            DisableIfExists("CountDesc");
+            DisableIfExists("FormulaFunctionLabel");
+            DisableIfExists("FormulaDesc");
+            DisableIfExists("ScaleXDesc");
+            DisableIfExists("ScaleYDesc");
+            DisableIfExists("ZoneDesc");
+            DisableIfExists("DropdownZone_Label");
+
+            // Asegurar texto del label de cantidad (si existe)
+            SetLabelTextIfExists("CountFunctionLabel", "Cantidad de vectores:");
 
             var titleLabel = FindTitleLabel();
             if (titleLabel != null)
             {
-                titleLabel.gameObject.SetActive(true);
+                if (!titleLabel.gameObject.activeSelf)
+                    titleLabel.gameObject.SetActive(true);
+
                 titleLabel.text = "Campo Vectorial";
-                titleLabel.fontSize = 42f;
+                titleLabel.fontSize = 48f;
                 titleLabel.fontStyle = FontStyles.Bold;
                 titleLabel.color = new Color(0.08f, 0.56f, 1f, 1f);
                 titleLabel.alignment = TextAlignmentOptions.Center;
             }
 
+            // Sin descripción (pedido)
             var desc = FindDescriptionLabel();
             if (desc != null)
             {
-                desc.gameObject.SetActive(true);
-                desc.text = PanelDescriptionText;
-                desc.fontSize = 16f;
-                desc.fontStyle = FontStyles.Normal;
-                desc.color = new Color(0.85f, 0.85f, 0.85f, 1f);
-                desc.alignment = TextAlignmentOptions.Center;
+                desc.text = string.Empty;
+                desc.gameObject.SetActive(false);
             }
 
-            DisableIfExists("dropScaleX_Label");
-            DisableIfExists("dropScaleY_Label");
+            // Labels de los dropdowns
+            SetLabelTextIfExists("InputScaleX_Label", "Primera funcion f(x,y):");
+            SetLabelTextIfExists("InputScaleY_Label", "Segunda funcion f(x,y):");
 
             // Configurar dropdowns con las opciones de eje
             ConfigureFunctionDropdown(inputScaleX, new[] { "X", "-X", "-Y", "Y", "-X-Y", "Y^2" }, 0);
             ConfigureFunctionDropdown(inputScaleY, new[] { "Y", "-Y", "X", "-X", "X-Y", "0" }, 0);
 
+            // Timer visible
             if (statusLabel == null)
                 statusLabel = FindStatusLabelFallback();
-            if (statusLabel != null && statusLabel.name != "PanelTitleLabel")
-                statusLabel.gameObject.SetActive(false);
+            if (statusLabel != null)
+            {
+                statusLabel.gameObject.SetActive(true);
+                statusLabel.fontSize = 22f;
+                statusLabel.fontStyle = FontStyles.Bold;
+                statusLabel.color = new Color(1f, 1f, 1f, 1f);
+                statusLabel.alignment = TextAlignmentOptions.Center;
+            }
 
-            DisableDecorativeRaycasts(titleLabel, desc);
-
-            if (btnGenerate != null)
-                btnGenerate.gameObject.SetActive(true);
-            if (btnDelete != null)
-                btnDelete.gameObject.SetActive(true);
-            if (btnGenerateDucks != null)
-                btnGenerateDucks.gameObject.SetActive(true);
-
-            ConfigureButtonsLayout();
-            ApplySimplifiedControlOrder();
+            // Asegurar orden: título arriba, luego timer.
+            if (titleLabel != null && statusLabel != null)
+            {
+                var titleTr = titleLabel.transform;
+                var timerTr = statusLabel.transform;
+                if (titleTr.parent == timerTr.parent)
+                {
+                    titleTr.SetAsFirstSibling();
+                    timerTr.SetSiblingIndex(Mathf.Min(1, timerTr.parent.childCount - 1));
+                }
+            }
 
             if (btnGenerate != null)
             {
                 var buttonText = btnGenerate.GetComponentInChildren<TextMeshProUGUI>(true);
                 if (buttonText != null)
                 {
-                    buttonText.text = "GENERAR CAMPO";
+                    buttonText.text = "COMENZAR CAMPO VECTORIAL";
                     buttonText.fontStyle = FontStyles.Bold;
                     buttonText.color = Color.white;
                 }
@@ -264,7 +265,7 @@ namespace VectorFieldUI
                 var buttonText = btnDelete.GetComponentInChildren<TextMeshProUGUI>(true);
                 if (buttonText != null)
                 {
-                    buttonText.text = "ELIMINAR CAMPO";
+                    buttonText.text = "ELIMINAR CAMPO VECTORIAL";
                     buttonText.fontStyle = FontStyles.Bold;
                     buttonText.color = Color.white;
                 }
@@ -292,16 +293,19 @@ namespace VectorFieldUI
                 colors.colorMultiplier = 1f;
                 btnGenerateDucks.colors = colors;
             }
+        }
 
-            DisablePanelBackgroundRaycast();
-            DisableScrollBlockingRaycasts();
-            HideButtonsOutsideButtonsRow();
-
-            if (Application.isPlaying)
+        void HideLegacyFunctionInputFields()
+        {
+            var inputs = GetComponentsInChildren<TMP_InputField>(true);
+            for (int i = 0; i < inputs.Length; i++)
             {
-                EnsureUIInputWorks();
-                WireButtonListeners();
-                _uiInitialized = true;
+                var input = inputs[i];
+                if (input == null)
+                    continue;
+
+                if (input.name == "InputScaleX" || input.name == "InputScaleY")
+                    input.gameObject.SetActive(false);
             }
         }
 
@@ -355,384 +359,21 @@ namespace VectorFieldUI
             return 1000;
         }
 
-        string GetDropdownValue(TMP_Dropdown dropdown)
+        void DisableIfExists(string name)
         {
-            if (dropdown == null || dropdown.options == null || dropdown.options.Count == 0)
-                return string.Empty;
-            int idx = Mathf.Clamp(dropdown.value, 0, dropdown.options.Count - 1);
-            return NormalizeFunctionExpression(dropdown.options[idx].text);
-        }
-
-        static string NormalizeFunctionExpression(string raw)
-        {
-            if (string.IsNullOrWhiteSpace(raw))
-                return string.Empty;
-            return raw.Trim().Replace(" ", string.Empty).ToLowerInvariant();
-        }
-
-        void HideLegacyPanelControls()
-        {
-            if (dropCount) dropCount.gameObject.SetActive(false);
-            if (dropFormula) dropFormula.gameObject.SetActive(false);
-            if (dropZone) dropZone.gameObject.SetActive(false);
-            if (btnReset) btnReset.gameObject.SetActive(false);
-
-            DisableAllNamed(HiddenScrollContentNames);
-        }
-
-        Transform GetScrollContent()
-        {
-            if (dropScaleX != null && dropScaleX.transform.parent != null)
-                return dropScaleX.transform.parent;
-            if (dropCount != null && dropCount.transform.parent != null)
-                return dropCount.transform.parent;
-
-            var sr = GetComponentInChildren<ScrollRect>(true);
-            return sr != null ? sr.content : null;
-        }
-
-        void EnforceScrollContentWhitelist()
-        {
-            var content = GetScrollContent();
-            if (content == null)
-                return;
-
-            for (int i = 0; i < content.childCount; i++)
-            {
-                var child = content.GetChild(i);
-                if (child != null && HiddenScrollContentNames.Contains(child.name))
-                    child.gameObject.SetActive(false);
-            }
-        }
-
-        void EnsureUIInputWorks()
-        {
-            if (!Application.isPlaying)
-                return;
-
-            EnsureEventSystemExists();
-
-            if (TryGetComponent<Canvas>(out var canvas) && canvas.renderMode == RenderMode.WorldSpace)
-            {
-                var cam = Camera.main;
-                if (cam == null)
-                    cam = FindFirstObjectByType<Camera>();
-
-                if (cam != null)
-                    canvas.worldCamera = cam;
-            }
-
-            _panelRaycaster = GetComponent<GraphicRaycaster>();
-            if (_panelRaycaster == null)
-                _panelRaycaster = gameObject.AddComponent<GraphicRaycaster>();
-
-            var scroll = GetComponentInChildren<ScrollRect>(true);
-            if (scroll != null)
-            {
-                scroll.enabled = false;
-                scroll.scrollSensitivity = 0f;
-            }
-
-            DisableScrollBlockingRaycasts();
-        }
-
-        void EnsureEventSystemExists()
-        {
-            if (EventSystem.current != null)
-                return;
-
-            var existing = FindFirstObjectByType<EventSystem>();
-            if (existing != null)
-                return;
-
-            var go = new GameObject("PanelFallbackEventSystem");
-            go.AddComponent<EventSystem>();
-            go.AddComponent<StandaloneInputModule>();
-        }
-
-        void DisableScrollBlockingRaycasts()
-        {
-            var scroll = GetComponentInChildren<ScrollRect>(true);
-            if (scroll == null)
-                return;
-
-            void DisableImageRaycast(Transform tr)
-            {
-                if (tr == null)
-                    return;
-
-                var image = tr.GetComponent<Image>();
-                if (image != null)
-                    image.raycastTarget = false;
-            }
-
-            DisableImageRaycast(scroll.transform);
-            DisableImageRaycast(scroll.viewport);
-
-            var masks = scroll.GetComponentsInChildren<Mask>(true);
-            for (int i = 0; i < masks.Length; i++)
-            {
-                if (masks[i] == null)
-                    continue;
-
-                var maskImage = masks[i].GetComponent<Image>();
-                if (maskImage != null)
-                    maskImage.raycastTarget = false;
-            }
-        }
-
-        void HideButtonsOutsideButtonsRow()
-        {
-            var content = GetScrollContent();
-            if (content == null)
-                return;
-
-            var buttonsRow = content.Find("ButtonsRow");
-            var allButtons = content.GetComponentsInChildren<Button>(true);
-            for (int i = 0; i < allButtons.Length; i++)
-            {
-                var btn = allButtons[i];
-                if (btn == null)
-                    continue;
-
-                if (buttonsRow != null && btn.transform.IsChildOf(buttonsRow))
-                    continue;
-
-                if (Application.isPlaying)
-                    Destroy(btn.gameObject);
-                else
-                    btn.gameObject.SetActive(false);
-            }
-        }
-
-        void DisablePanelBackgroundRaycast()
-        {
-            var bg = GetComponent<Image>();
-            if (bg != null)
-                bg.raycastTarget = false;
-        }
-
-        void HandleMouseClickFallback()
-        {
-            if (!Input.GetMouseButtonDown(0))
-                return;
-
-            if (_panelRaycaster == null)
-                return;
-
-            var canvas = GetComponent<Canvas>();
-            if (canvas == null)
-                return;
-
-            if (canvas.worldCamera == null)
-            {
-                var cam = Camera.main ?? FindFirstObjectByType<Camera>();
-                if (cam != null)
-                    canvas.worldCamera = cam;
-            }
-
-            if (canvas.worldCamera == null)
-                return;
-
-            EnsureEventSystemExists();
-            var eventSystem = EventSystem.current;
-            if (eventSystem == null)
-                return;
-
-            var pointer = new PointerEventData(eventSystem)
-            {
-                position = Input.mousePosition,
-            };
-
-            _raycastHits.Clear();
-            _panelRaycaster.Raycast(pointer, _raycastHits);
-            if (_raycastHits.Count == 0)
-                return;
-
-            for (int i = 0; i < _raycastHits.Count; i++)
-            {
-                var go = _raycastHits[i].gameObject;
-                if (go == null)
-                    continue;
-
-                if (TryHandleButtonClick(go))
-                    return;
-
-                if (TryHandleDropdownClick(go))
-                    return;
-            }
-        }
-
-        bool TryHandleButtonClick(GameObject go)
-        {
-            var btn = go.GetComponentInParent<Button>();
-            if (btn == null || !btn.interactable || !btn.gameObject.activeInHierarchy)
-                return false;
-
-            if (btn == btnGenerate)
-            {
-                OnGenerate();
-                return true;
-            }
-            if (btn == btnDelete)
-            {
-                OnDelete();
-                return true;
-            }
-            if (btn == btnGenerateDucks)
-            {
-                OnGenerateDucks();
-                return true;
-            }
-
-            btn.onClick.Invoke();
-            return true;
-        }
-
-        bool TryHandleDropdownClick(GameObject go)
-        {
-            var toggle = go.GetComponentInParent<Toggle>();
-            if (toggle != null && toggle.group != null)
-            {
-                toggle.isOn = true;
-                return true;
-            }
-
-            var dropdown = go.GetComponentInParent<TMP_Dropdown>();
-            if (dropdown == null || !dropdown.interactable || !dropdown.gameObject.activeInHierarchy)
-                return false;
-
-            // Cerrar el otro dropdown antes de abrir el seleccionado
-            if (dropdown == dropScaleX && dropScaleY != null && dropScaleY.IsExpanded)
-                dropScaleY.Hide();
-            else if (dropdown == dropScaleY && dropScaleX != null && dropScaleX.IsExpanded)
-                dropScaleX.Hide();
-
-            dropdown.Show();
-            return true;
-        }
-
-        void ImproveCanvasReadability()
-        {
-            var canvasRt = transform as RectTransform;
-            if (canvasRt != null && canvasRt.localScale.x < 0.018f)
-                canvasRt.localScale = Vector3.one * 0.018f;
-
-            if (TryGetComponent<Canvas>(out var canvas))
-            {
-                canvas.renderMode = RenderMode.WorldSpace;
-                canvas.overrideSorting = false;
-            }
-
-            if (TryGetComponent<CanvasScaler>(out var scaler))
-            {
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
-                scaler.scaleFactor = 1f;
-                if (scaler.dynamicPixelsPerUnit < 50f)
-                    scaler.dynamicPixelsPerUnit = 80f;
-            }
-        }
-
-        void ConfigureButtonsLayout()
-        {
-            var content = GetScrollContent();
-            if (content == null)
-                return;
-
-            var buttonsRow = content.Find("ButtonsRow");
-            if (buttonsRow != null)
-                buttonsRow.gameObject.SetActive(true);
-
-            void SetupButton(Button btn, float height)
-            {
-                if (btn == null)
-                    return;
-
-                btn.gameObject.SetActive(true);
-
-                var le = btn.GetComponent<LayoutElement>();
-                if (le == null)
-                    le = btn.gameObject.AddComponent<LayoutElement>();
-                le.preferredHeight = height;
-                le.flexibleWidth = 1f;
-                le.minHeight = height;
-            }
-
-            SetupButton(btnGenerate, 44f);
-            SetupButton(btnDelete, 44f);
-            SetupButton(btnGenerateDucks, 44f);
-
-            if (buttonsRow != null)
-            {
-                var rowLe = buttonsRow.GetComponent<LayoutElement>();
-                if (rowLe != null)
-                    rowLe.preferredHeight = 140f;
-
-                var vlg = buttonsRow.GetComponent<VerticalLayoutGroup>();
-                if (vlg != null)
-                {
-                    vlg.spacing = 6f;
-                    vlg.childControlWidth = true;
-                    vlg.childControlHeight = true;
-                    vlg.childForceExpandWidth = true;
-                    vlg.childForceExpandHeight = false;
-                }
-            }
-
-            if (btnGenerate != null)
-                btnGenerate.transform.SetSiblingIndex(0);
-            if (btnDelete != null)
-                btnDelete.transform.SetSiblingIndex(1);
-            if (btnGenerateDucks != null)
-                btnGenerateDucks.transform.SetSiblingIndex(2);
-        }
-
-        void ApplySimplifiedControlOrder()
-        {
-            var content = GetScrollContent();
-            if (content == null)
-                return;
-
-            int idx = 0;
-            void Place(Transform tr)
-            {
-                if (tr == null || !tr.gameObject.activeInHierarchy)
-                    return;
-                tr.SetSiblingIndex(idx++);
-            }
-
-            Place(FindTitleLabel()?.transform);
-            Place(FindDescriptionLabel()?.transform);
-            Place(content.Find("DropdownScaleX_Label"));
-            Place(dropScaleX != null ? dropScaleX.transform : null);
-            Place(content.Find("DropdownScaleY_Label"));
-            Place(dropScaleY != null ? dropScaleY.transform : null);
-            Place(content.Find("ButtonsRow"));
-
-            if (content is RectTransform contentRt)
-                LayoutRebuilder.ForceRebuildLayoutImmediate(contentRt);
-        }
-
-        void DisableIfExists(string name) => DisableAllNamed(name);
-
-        void DisableAllNamed(params string[] names)
-        {
-            if (names == null || names.Length == 0)
-                return;
-            DisableAllNamed(new HashSet<string>(names));
-        }
-
-        void DisableAllNamed(HashSet<string> nameSet)
-        {
-            if (nameSet == null || nameSet.Count == 0)
-                return;
-
+            var tr = transform.Find(name);
+            if (tr != null)
+                tr.gameObject.SetActive(false);
+
+            // También puede estar dentro del content del panel
             var all = GetComponentsInChildren<Transform>(true);
             for (int i = 0; i < all.Length; i++)
             {
-                var tr = all[i];
-                if (tr != null && nameSet.Contains(tr.name))
-                    tr.gameObject.SetActive(false);
+                if (all[i] != null && all[i].name == name)
+                {
+                    all[i].gameObject.SetActive(false);
+                    break;
+                }
             }
         }
 
@@ -766,52 +407,19 @@ namespace VectorFieldUI
             return null;
         }
 
-        void ConfigureFunctionDropdown(TMP_Dropdown dropdown, string[] options, string fallbackSelected)
+        void ConfigureFunctionDropdown(TMP_Dropdown dropdown, string[] options, int defaultIndex)
         {
             if (dropdown == null)
                 return;
 
             dropdown.ClearOptions();
-            var optList = new List<TMP_Dropdown.OptionData>();
-            foreach (var o in options)
-                optList.Add(new TMP_Dropdown.OptionData(o));
-            dropdown.AddOptions(optList);
-
-            int fallbackIdx = 0;
+            var opts = new List<TMP_Dropdown.OptionData>();
             for (int i = 0; i < options.Length; i++)
-            {
-                if (string.Equals(options[i], fallbackSelected, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    fallbackIdx = i;
-                    break;
-                }
-            }
-            dropdown.SetValueWithoutNotify(fallbackIdx);
+                opts.Add(new TMP_Dropdown.OptionData(options[i]));
+            dropdown.AddOptions(opts);
 
-            FixDropdownTemplate(dropdown);
-            dropdown.RefreshShownValue();
-            dropdown.interactable = true;
-
-            var dropdownImage = dropdown.GetComponent<Image>();
-            if (dropdownImage != null)
-                dropdownImage.raycastTarget = true;
-
-            dropdown.onValueChanged.RemoveListener(OnFunctionDropdownChanged);
-            dropdown.onValueChanged.AddListener(OnFunctionDropdownChanged);
-        }
-
-        void OnFunctionDropdownChanged(int _) { /* valores ya están en el dropdown, se leen en OnGenerate */ }
-
-        void ConfigureFunctionInput(TMP_InputField input, string fallback)
-        {
-            if (input == null)
-                return;
-
-            input.contentType = TMP_InputField.ContentType.Standard;
-            input.characterLimit = 64;
-
-            if (string.IsNullOrWhiteSpace(input.text))
-                input.text = fallback;
+            int safeIdx = Mathf.Clamp(defaultIndex, 0, opts.Count - 1);
+            dropdown.SetValueWithoutNotify(safeIdx);
         }
 
         TextMeshProUGUI FindTitleLabel()
@@ -856,29 +464,45 @@ namespace VectorFieldUI
             return null;
         }
 
-        void ResolveButtonReferences()
+        void EnsureExtraControls()
         {
-            if (btnGenerate == null) btnGenerate = FindButtonInPanel("btnGenerate");
-            if (btnDelete == null) btnDelete = FindButtonInPanel("btnDelete");
-            if (btnGenerateDucks == null) btnGenerateDucks = FindButtonInPanel("btnGenerateDucks");
+            TMP_Dropdown source = dropFormula ? dropFormula : dropCount;
+            if (!source) return;
+
+            Transform content = source.transform.parent;
+            if (!content) return;
+
+            if (!inputScaleX)
+                inputScaleX = CreateRuntimeAxisDropdown(content, source, "InputScaleX");
+
+            if (!inputScaleY)
+                inputScaleY = CreateRuntimeAxisDropdown(content, source, "InputScaleY");
+
+            // Ya no usamos zonas / dropdowns en modo Stewart
+
+            // Crear botones en runtime si no están cableados en el prefab
+            if (!btnGenerate)
+                btnGenerate = CreateRuntimeButton(content, "btnGenerate", "Generar Campo Vectorial", new Color(0.12f, 0.70f, 0.26f, 1f));
+
+            if (!btnDelete)
+                btnDelete = CreateRuntimeButton(content, "btnDelete", "Eliminar Campo Vectorial", new Color(0.75f, 0.15f, 0.15f, 1f));
+
+            if (!btnGenerateDucks)
+                btnGenerateDucks = CreateRuntimeButton(content, "btnGenerateDucks", "Generar Patos", new Color(0.96f, 0.80f, 0.12f, 1f));
+
+            // Fuerza el refresco de layout para que los nuevos controles sean visibles de inmediato.
+            if (content is RectTransform rt)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rt);
         }
 
-        void PurgeDuplicateButtons()
+        Button CreateRuntimeButton(Transform parent, string objName, string label, Color bgColor)
         {
-            var groups = new Dictionary<string, List<Button>>();
-            var allButtons = GetComponentsInChildren<Button>(true);
-            for (int i = 0; i < allButtons.Length; i++)
+            // Reusar si ya existe con ese nombre
+            var existing = parent.Find(objName);
+            if (existing != null)
             {
-                var btn = allButtons[i];
-                if (btn == null)
-                    continue;
-
-                if (!groups.TryGetValue(btn.name, out var list))
-                {
-                    list = new List<Button>();
-                    groups[btn.name] = list;
-                }
-                list.Add(btn);
+                var existingBtn = existing.GetComponent<Button>();
+                if (existingBtn != null) return existingBtn;
             }
 
             var go = new GameObject(objName, typeof(RectTransform), typeof(LayoutElement), typeof(Image), typeof(Button));
@@ -950,186 +574,40 @@ namespace VectorFieldUI
             // template required for TMP_Dropdown to open
             if (templateSource != null && templateSource.template != null)
             {
-                if (pair.Value.Count <= 1)
-                    continue;
-
-                Button keep = null;
-                for (int i = 0; i < pair.Value.Count; i++)
-                {
-                    var candidate = pair.Value[i];
-                    if (candidate.transform.parent != null && candidate.transform.parent.name == "ButtonsRow")
-                    {
-                        keep = candidate;
-                        break;
-                    }
-                }
-                if (keep == null)
-                    keep = pair.Value[0];
-
-                for (int i = 0; i < pair.Value.Count; i++)
-                {
-                    var duplicate = pair.Value[i];
-                    if (duplicate == keep)
-                        continue;
-
-                    if (Application.isPlaying)
-                        Destroy(duplicate.gameObject);
-                    else
-                        duplicate.gameObject.SetActive(false);
-                }
-
-                if (pair.Key == "btnGenerate") btnGenerate = keep;
-                if (pair.Key == "btnDelete") btnDelete = keep;
-                if (pair.Key == "btnGenerateDucks") btnGenerateDucks = keep;
+                var tmpl = Instantiate(templateSource.template, dropGO.transform);
+                tmpl.name = "Template";
+                tmpl.gameObject.SetActive(false);
+                dropdown.template = tmpl as RectTransform;
+                var cg = tmpl.GetComponent<CanvasGroup>();
+                if (cg == null) tmpl.gameObject.AddComponent<CanvasGroup>();
             }
 
-            PurgeDuplicatePatosButtonsByLabel();
+            return dropdown;
         }
 
-        void PurgeDuplicatePatosButtonsByLabel()
+        TMP_Dropdown CreateRuntimeLabeledDropdown(Transform parent, TMP_Dropdown source, string objName, string labelText)
         {
-            var content = GetScrollContent();
-            if (content == null)
-                return;
+            var labelGO = new GameObject(objName + "_Label", typeof(RectTransform), typeof(LayoutElement), typeof(TextMeshProUGUI));
+            labelGO.transform.SetParent(parent, false);
 
-            var buttonsRow = content.Find("ButtonsRow");
-            var patosButtons = new List<Button>();
-            var allButtons = content.GetComponentsInChildren<Button>(true);
-            for (int i = 0; i < allButtons.Length; i++)
-            {
-                var btn = allButtons[i];
-                if (btn == null)
-                    continue;
+            var labelLayout = labelGO.GetComponent<LayoutElement>();
+            labelLayout.preferredHeight = 24f;
 
-                var label = btn.GetComponentInChildren<TextMeshProUGUI>(true);
-                if (label == null || label.text == null)
-                    continue;
+            var labelTextComp = labelGO.GetComponent<TextMeshProUGUI>();
+            labelTextComp.text = labelText;
+            labelTextComp.fontSize = 18;
+            labelTextComp.color = new Color(0.85f, 0.85f, 0.85f);
+            labelTextComp.fontStyle = FontStyles.Bold;
 
-                if (label.text.IndexOf("GENERAR PATOS", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                    patosButtons.Add(btn);
-            }
+            var dropGO = Instantiate(source.gameObject, parent);
+            dropGO.name = objName;
 
-            if (patosButtons.Count <= 1)
-                return;
+            var dropdown = dropGO.GetComponent<TMP_Dropdown>();
+            dropdown.ClearOptions();
+            dropdown.value = 0;
+            FixDropdownTemplate(dropdown);
 
-            Button keep = null;
-            for (int i = 0; i < patosButtons.Count; i++)
-            {
-                if (buttonsRow != null && patosButtons[i].transform.IsChildOf(buttonsRow))
-                {
-                    keep = patosButtons[i];
-                    break;
-                }
-            }
-            if (keep == null)
-                keep = patosButtons[0];
-
-            for (int i = 0; i < patosButtons.Count; i++)
-            {
-                var duplicate = patosButtons[i];
-                if (duplicate == keep)
-                    continue;
-
-                if (Application.isPlaying)
-                    Destroy(duplicate.gameObject);
-                else
-                    duplicate.gameObject.SetActive(false);
-            }
-
-            btnGenerateDucks = keep;
-        }
-
-        Button FindButtonInPanel(string buttonName)
-        {
-            var content = GetScrollContent();
-            if (content == null)
-                return null;
-
-            var buttonsRow = content.Find("ButtonsRow");
-            if (buttonsRow != null)
-            {
-                var inRow = buttonsRow.Find(buttonName);
-                if (inRow != null && inRow.TryGetComponent<Button>(out var rowBtn))
-                    return rowBtn;
-            }
-
-            var onContent = content.Find(buttonName);
-            if (onContent != null && onContent.TryGetComponent<Button>(out var contentBtn))
-                return contentBtn;
-
-            return null;
-        }
-
-        void DisableDecorativeRaycasts(params TextMeshProUGUI[] extras)
-        {
-            var labels = GetComponentsInChildren<TextMeshProUGUI>(true);
-            for (int i = 0; i < labels.Length; i++)
-            {
-                var lbl = labels[i];
-                if (lbl == null)
-                    continue;
-
-                if (lbl.name.Contains("Label") ||
-                    lbl.name == "PanelTitleLabel" ||
-                    lbl.name == "PanelDescriptionLabel")
-                {
-                    lbl.raycastTarget = false;
-                }
-            }
-
-            if (extras == null)
-                return;
-
-            for (int i = 0; i < extras.Length; i++)
-            {
-                if (extras[i] != null)
-                    extras[i].raycastTarget = false;
-            }
-        }
-
-        void WireDropdownsFromPrefab()
-        {
-            if (dropScaleX == null)
-                dropScaleX = FindDropdownInPanel("dropScaleX");
-            if (dropScaleY == null)
-                dropScaleY = FindDropdownInPanel("dropScaleY");
-        }
-
-        TMP_Dropdown FindDropdownInPanel(string dropdownName)
-        {
-            var all = GetComponentsInChildren<TMP_Dropdown>(true);
-            for (int i = 0; i < all.Length; i++)
-            {
-                if (all[i] != null && all[i].name == dropdownName)
-                    return all[i];
-            }
-            return null;
-        }
-
-        void WireButtonListeners()
-        {
-            try
-            {
-                if (btnGenerate != null)
-                {
-                    btnGenerate.onClick.RemoveAllListeners();
-                    btnGenerate.onClick.AddListener(OnGenerate);
-                }
-                if (btnDelete != null)
-                {
-                    btnDelete.onClick.RemoveAllListeners();
-                    btnDelete.onClick.AddListener(OnDelete);
-                }
-                if (btnGenerateDucks != null)
-                {
-                    btnGenerateDucks.onClick.RemoveAllListeners();
-                    btnGenerateDucks.onClick.AddListener(OnGenerateDucks);
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"Error al asignar listeners de botones: {ex.Message}", this);
-            }
+            return dropdown;
         }
 
         void FixDropdownTemplate(TMP_Dropdown dropdown)
@@ -1162,26 +640,7 @@ namespace VectorFieldUI
                 if (cg == null)
                     dropdown.template.gameObject.AddComponent<CanvasGroup>();
 
-                var templateCanvas = dropdown.template.GetComponent<Canvas>();
-                if (templateCanvas == null)
-                    templateCanvas = dropdown.template.gameObject.AddComponent<Canvas>();
-                templateCanvas.overrideSorting = true;
-                templateCanvas.sortingOrder = 400;
-                if (TryGetComponent<Canvas>(out var rootCanvas) && rootCanvas.worldCamera != null)
-                    templateCanvas.worldCamera = rootCanvas.worldCamera;
-
-                var templateRaycaster = dropdown.template.GetComponent<GraphicRaycaster>();
-                if (templateRaycaster == null)
-                    dropdown.template.gameObject.AddComponent<GraphicRaycaster>();
-
                 dropdown.template.gameObject.SetActive(false);
-            }
-
-            var caption = dropdown.captionText;
-            if (caption != null)
-            {
-                caption.fontSize = Mathf.Max(caption.fontSize, 20f);
-                caption.color = Color.white;
             }
         }
 
@@ -1217,10 +676,8 @@ namespace VectorFieldUI
 
             try
             {
-                string p = dropScaleX != null ? GetDropdownValue(dropScaleX) : "x";
-                string q = dropScaleY != null ? GetDropdownValue(dropScaleY) : "y";
-                if (string.IsNullOrEmpty(p)) p = "x";
-                if (string.IsNullOrEmpty(q)) q = "y";
+                string p = GetSelectedExpression(inputScaleX);
+                string q = GetSelectedExpression(inputScaleY);
 
                 if (string.IsNullOrWhiteSpace(p) || string.IsNullOrWhiteSpace(q))
                 {
@@ -1275,14 +732,23 @@ namespace VectorFieldUI
             }
         }
 
+        string GetSelectedExpression(TMP_Dropdown dropdown)
+        {
+            if (dropdown == null || dropdown.options == null || dropdown.options.Count == 0)
+                return "x";
+
+            int idx = Mathf.Clamp(dropdown.value, 0, dropdown.options.Count - 1);
+            return dropdown.options[idx].text;
+        }
+
         void OnDelete()
         {
             try
             {
                 StopCountdown();
 
-                if (dropScaleX) dropScaleX.SetValueWithoutNotify(0);
-                if (dropScaleY) dropScaleY.SetValueWithoutNotify(0);
+                if (inputScaleX != null) inputScaleX.SetValueWithoutNotify(0);
+                if (inputScaleY != null) inputScaleY.SetValueWithoutNotify(0);
 
                 if (fieldManager) fieldManager.DeleteField();
                 SetDucksButtonEnabled(false);
@@ -1377,3 +843,4 @@ namespace VectorFieldUI
         }
     }
 }
+

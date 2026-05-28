@@ -1,3 +1,4 @@
+using ExitGames.Client.Photon.StructWrapping;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -20,10 +21,14 @@ public class BoatMovement : MonoBehaviour
     [Header("Field Settings")]
 
     [SerializeField] float fieldEffectStrength = 2f;
+    [SerializeField] float fieldRotationStrength = 2f;
     private GameObject VFM; //Referencia al VectorFieldManager para obtener el origen de evaluación.
     private VectorField.VectorFieldManager manager;
     private Vector2 evalOrigin = Vector2.zero; // Origen para evaluar el campo vectorial
     
+    private bool boatAffectedByField = false;
+
+
     private bool isPlayerOnBoat = false;
     private bool boatMovingActive = false;
 
@@ -32,7 +37,6 @@ public class BoatMovement : MonoBehaviour
 
     void OnEnable()
     {
-       // The line is performing a null check on the `leaveBoat` variable and its `action` property.
         if (leaveBoat != null && leaveBoat.action != null)
         {
             leaveBoat.action.performed += LeaveBoat;
@@ -77,18 +81,7 @@ public class BoatMovement : MonoBehaviour
     void Start()
     {
         VFM = GameObject.Find("VFM");
-        if (VFM == null)
-        {
-            var found = FindFirstObjectByType<VectorField.VectorFieldManager>();
-            if (found != null)
-                VFM = found.gameObject;
-        }
-
-        if (VFM != null)
-            manager = VFM.GetComponent<VectorField.VectorFieldManager>();
-
-        if (manager == null)
-            Debug.LogWarning("BoatMovement: No se encontró VectorFieldManager (objeto 'VFM'). El barco no usará el campo vectorial.");
+        manager = VFM.GetComponent<VectorField.VectorFieldManager>();
     }
     
 
@@ -160,8 +153,6 @@ public class BoatMovement : MonoBehaviour
         // Adelante / atrás
         float moveAmount = -moveInput.y;
 
-        // Rotación
-        float rotationAmount = rotateInput.sqrMagnitude > 0f ? rotateInput.x : moveInput.x;
 
         //Se calcula el movimiento del barco
         Vector3 BoatMovement = Vector3.right * moveAmount * moveSpeed * Time.deltaTime;
@@ -178,17 +169,20 @@ public class BoatMovement : MonoBehaviour
         //Se suman las fuerzas calculadas para obtener el movimiento final del barco.
         Vector3 finalMovement = BoatMovement + fieldForce;
 
+        
         // Mover en la dirección frontal del barco
         boat.transform.Translate(
             finalMovement,
             Space.Self
         );
-
+        Vector3 boatForward = boat.transform.right;
+        Vector3 fieldDirection = fieldForce.normalized;
+        float angleDifference = Vector3.SignedAngle(boatForward, fieldDirection, Vector3.up);
+        float fieldRotationForce = angleDifference / 180f;
+        float rotationAmount = rotateInput.sqrMagnitude > 0f ? rotateInput.x : moveInput.x;
+        rotationAmount -= fieldRotationForce * fieldRotationStrength;
         // Rotar barco
-        boat.transform.Rotate(
-            Vector3.up,
-            rotationAmount * rotationSpeed * Time.deltaTime
-        );
+       boat.transform.Rotate(Vector3.up, rotationAmount * rotationSpeed * Time.deltaTime);
     }
 
     private void DisablePlayerMovementAndRotation()
@@ -242,32 +236,10 @@ public class BoatMovement : MonoBehaviour
 
     public void SetPlayer()
     {
-        if (GameManager.Instance == null)
-        {
-            Debug.LogWarning("BoatMovement: GameManager.Instance is null.");
-            return;
-        }
-
         player = GameManager.Instance.playerPrefab;
-        if (player == null)
-        {
-            Debug.LogWarning("BoatMovement: Player reference is null in GameManager.");
-            return;
-        }
-
-        var locomotion = player.transform.Find("Locomotion");
-        if (locomotion != null)
-        {
-            var move = locomotion.Find("Move");
-            if (move != null)
-                playerMovement = move.gameObject;
-
-            var turn = locomotion.Find("Turn");
-            if (turn != null)
-                playerTurn = turn.gameObject;
-        }
-
-        if (playerMovement == null)
+        if(player != null) Debug.Log("Prefab llamado correctamente");
+        playerMovement = player.transform.Find("Locomotion").Find("Move").gameObject;
+        if(playerMovement == null)
         {
             Debug.LogWarning("BoatMovement: Player movement reference is null in GameManager.");
         }
@@ -275,13 +247,22 @@ public class BoatMovement : MonoBehaviour
         {
             Debug.Log("BoatMovement: Player movement reference set from GameManager.");
         }
-        if (playerTurn == null)
+        playerTurn = player.transform.Find("Locomotion").Find("Turn").gameObject;
+            if(playerTurn == null)
+            {
+                Debug.LogWarning("BoatMovement: Player turn reference is null in GameManager.");
+            }
+            else
+            {
+                Debug.Log("BoatMovement: Player turn reference set from GameManager.");
+            }
+        if(player == null)
         {
-            Debug.LogWarning("BoatMovement: Player turn reference is null in GameManager.");
+            Debug.LogWarning("BoatMovement: Player reference is null in GameManager.");
         }
         else
         {
-            Debug.Log("BoatMovement: Player turn reference set from GameManager.");
+            Debug.Log("BoatMovement: Player reference set from GameManager.");
         }
     }
 }
