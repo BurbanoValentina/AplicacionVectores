@@ -88,6 +88,9 @@
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\Benchmark01.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TextMeshSpawner.cs" />
     <Compile Include="Assets\BoatMovement.cs" />
+    <Compile Include="Assets\Arquitectura\Scripts\Presentacion\BoatMenu.cs" />
+    <Compile Include="Assets\Arquitectura\Scripts\Gameplay\SlowZone.cs" />
+    <Compile Include="Assets\Arquitectura\Scripts\Gameplay\TeleportZone.cs" />
     <Compile Include="Assets\WaterRippleShader Eldvmo\Scripts\BoatFloatControl.cs" />
     <Compile Include="Assets\Multijugador\GameManager.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\CameraController.cs" />
