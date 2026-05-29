@@ -14,8 +14,6 @@ public class XRNetworkSetup : MonoBehaviour
     [SerializeField] private GameObject LocomotionSystem;
     [SerializeField] private InputActionManager inputActionManager;
     [SerializeField] private XRInputModalityManager modalityManager;
-    [SerializeField] private XRGazeAssistance gazeAssistant;
-
      void Awake()
     {
         // Desactivar componentes XR para todos los jugadores inicialmente
@@ -46,7 +44,6 @@ public class XRNetworkSetup : MonoBehaviour
 
             inputActionManager.enabled = true;
             modalityManager.enabled = true;
-            gazeAssistant.enabled = true;
         }
         else
         {
