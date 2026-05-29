@@ -59,6 +59,7 @@ public class MultiplayerSpawner : MonoBehaviour
             Debug.Log("Waiting for connection to be ready...");
             yield return null;
         }
+        yield return new WaitForSeconds(10f);
         SpawnPlayer(0); // Spawn player after connection is ready
     }
 

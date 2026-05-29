@@ -5,7 +5,9 @@ using UnityEngine.InputSystem;
 public class BoatMovement : MonoBehaviour
 {
     [SerializeField] GameObject boat;
+    [SerializeField] Rigidbody rb;
     [SerializeField] private GameObject player;
+    [SerializeField] CharacterController characterController;
     [SerializeField] GameObject playerMovement;
     [SerializeField] GameObject playerTurn;
 
@@ -16,6 +18,9 @@ public class BoatMovement : MonoBehaviour
 
     [Header("Boat Settings")]
     [SerializeField] float moveSpeed = 5f;
+    private float currentSpeedMultiplier = 1f;
+     [SerializeField] float fieldRotationStrength = 2f;
+
     [SerializeField] float rotationSpeed = 100f;
 
     [Header("Field Settings")]
@@ -24,9 +29,9 @@ public class BoatMovement : MonoBehaviour
     private GameObject VFM; //Referencia al VectorFieldManager para obtener el origen de evaluación.
     private VectorField.VectorFieldManager manager;
     private Vector2 evalOrigin = Vector2.zero; // Origen para evaluar el campo vectorial
-    
+
     #pragma warning disable 0414 // El valor nunca se usa, pero se deja para posible lógica futura
-    private bool boatAffectedByField = false; 
+    private bool boatAffectedByField = false;
     #pragma warning restore 0414
 
 
@@ -80,16 +85,21 @@ public class BoatMovement : MonoBehaviour
         }
     }
 
+    void Awake()
+    {
+        rb = boat.GetComponent<Rigidbody>();
+    }
+
     void Start()
     {
         VFM = GameObject.Find("VFM");
         manager = VFM.GetComponent<VectorField.VectorFieldManager>();
     }
-    
 
-    void Update()
+
+    void FixedUpdate()
     {
-        if ((!isPlayerOnBoat) || (!boatMovingActive)) return;
+        if ((!isPlayerOnBoat) && (!boatMovingActive)) return;
         MoveBoat();
     }
 
@@ -100,7 +110,8 @@ public class BoatMovement : MonoBehaviour
             Debug.LogWarning("BoatMovement: Missing boat or player reference.");
             return;
         }
-
+        characterController = player.GetComponent<CharacterController>();
+        characterController.enabled = false; // Desactivar el CharacterController para evitar conflictos con la física del barco
         isPlayerOnBoat = true;
         boatMovingActive = true;
 
@@ -130,6 +141,29 @@ public class BoatMovement : MonoBehaviour
         rotateInput = Vector2.zero;
 
         player.transform.SetParent(null);
+        characterController = player.GetComponent<CharacterController>();
+        characterController.enabled = true; // Reactivar el CharacterController al salir del barco
+        EnablePlayerMovementAndRotation();
+    }
+
+    private void ManualLeaveBoat()
+    {
+        if (!isPlayerOnBoat) return;
+
+        if (player == null)
+        {
+            Debug.LogWarning("BoatMovement: Missing player reference.");
+            return;
+        }
+
+        isPlayerOnBoat = false;
+        boatMovingActive = false;
+        moveInput = Vector2.zero;
+        rotateInput = Vector2.zero;
+
+        player.transform.SetParent(null);
+        characterController = player.GetComponent<CharacterController>();
+        characterController.enabled = true; // Reactivar el CharacterController al salir del barco
         EnablePlayerMovementAndRotation();
     }
 
@@ -159,31 +193,54 @@ public class BoatMovement : MonoBehaviour
         float rotationAmount = rotateInput.sqrMagnitude > 0f ? rotateInput.x : moveInput.x;
 
         //Se calcula el movimiento del barco
-        Vector3 BoatMovement = Vector3.right * moveAmount * moveSpeed * Time.deltaTime;
+        Vector3 BoatMovement = boat.transform.right * moveAmount * moveSpeed;
         //Se calcula la fuerza del campo vectorial en la posición del barco.
-        Vector3 fieldForce = manager.EvaluateFormula(boat.transform.position, GetOriginFromManager()) * fieldEffectStrength;
+        Vector2 boatPosition2D = new Vector2(boat.transform.position.x, boat.transform.position.z);
+        Vector3 fieldForce = manager.EvaluateFormula(boatPosition2D, GetOriginFromManager());
+         Debug.Log("Fuerza del campo evaluada antes de la conversión: " + fieldForce);
         //Validación de que el field force sea un vector válido
         if (!IsValidVector(fieldForce))
         {
             fieldForce = Vector3.zero;
             Debug.Log("Fuerza del campo inválida");
         }
-        fieldForce = new Vector3(fieldForce.x, 0, fieldForce.y) * Time.deltaTime; //Se convierte a un vector 3D y se escala por deltaTime.
-        fieldForce = Vector3.ClampMagnitude(fieldForce, 0.1f);
+        fieldForce = new Vector3(fieldForce.x, 0, fieldForce.y);
+        Debug.Log("Fuerza del campo evaluada después de la conversión: " + fieldForce);
+        fieldForce *= fieldEffectStrength; // Se ajusta la fuerza del campo con un multiplicador para controlar su impacto en el movimiento del barco.
+        Debug.Log("Fuerza del campo después de aplicar el multiplicador: " + fieldForce);
         //Se suman las fuerzas calculadas para obtener el movimiento final del barco.
-        Vector3 finalMovement = BoatMovement + fieldForce;
+        Vector3 finalMovement = BoatMovement + fieldForce * currentSpeedMultiplier;
+         Debug.Log("Movimiento final del barco antes de aplicar el multiplicador de velocidad: " + finalMovement);
 
         // Mover en la dirección frontal del barco
-        boat.transform.Translate(
-            finalMovement,
-            Space.Self
-        );
+        rb.linearVelocity = new Vector3(finalMovement.x, rb.linearVelocity.y, finalMovement.z);
 
-        // Rotar barco
-        boat.transform.Rotate(
-            Vector3.up,
-            rotationAmount * rotationSpeed * Time.deltaTime
-        );
+        //RORACIÓN
+    //     Vector3 boatForward = boat.transform.right;
+    //     Vector3 fieldDirection = fieldForce.normalized;
+    //     float angleDifference = Vector3.SignedAngle(boatForward, fieldDirection, Vector3.up);
+    //     float fieldRotationForce = angleDifference / 180f;        rotationAmount -= fieldRotationForce * fieldRotationStrength;
+    //     // Rotar barco
+    //    boat.transform.Rotate(Vector3.up, rotationAmount * rotationSpeed * Time.deltaTime);
+        //----------------------------------------------------
+        // rb.MoveRotation(rb.rotation * Quaternion.Euler(0, rotationAmount * rotationSpeed *Time.fixedDeltaTime, 0));
+        //  Debug.Log("Rotación aplicada al barco: " + rotationAmount * rotationSpeed * Time.deltaTime);
+        //  Debug.Log("Rotación total del barco después de aplicar la rotación: " + boat.transform.rotation.eulerAngles);
+        //----------------------------------------------------
+        // Vector3 fieldDirection = fieldForce.normalized; 
+        // Quaternion targetRotation = Quaternion.LookRotation(fieldDirection) * Quaternion.Euler(0, -90, 0); // Rotar barco boat.transform.rotation = Quaternion.Slerp( boat.transform.rotation, targetRotation, rotationSpeed * Time.deltaTime );
+        // boat.transform.rotation = Quaternion.Slerp(boat.transform.rotation, targetRotation, fieldRotationStrength * Time.deltaTime);
+        //-----------------------------------------------------
+        Vector3 fieldDirection = fieldForce.normalized;
+        Quaternion targetRotation = Quaternion.LookRotation(fieldDirection, Vector3.up) * Quaternion.Euler(0, 90, 0);
+        Quaternion newRotation = Quaternion.Slerp(rb.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime);
+        rb.MoveRotation(newRotation);
+        Debug.Log("Rotación aplicada al barco: " + rotationAmount * rotationSpeed * Time.deltaTime);
+    }
+
+    public void SetSpeedMultiplier(float multiplier)
+    {
+        currentSpeedMultiplier = multiplier;
     }
 
     private void DisablePlayerMovementAndRotation()
@@ -212,9 +269,28 @@ public class BoatMovement : MonoBehaviour
         }
     }
 
-    private void Anchor()
+    public void resetBoatPosition(Transform resetPoint, Transform playerResetPoint)
+    {
+        ManualLeaveBoat(); // Asegura que el jugador salga del barco antes de resetear la posición
+        boat.transform.position = resetPoint.position;
+        boat.transform.rotation = resetPoint.rotation;
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        player.transform.position = playerResetPoint.position;
+        player.transform.rotation = playerResetPoint.rotation;
+        Debug.Log("Boat and player positions have been reset.");
+    }
+
+    public void Anchor()
     {
         boatMovingActive = false;
+        Debug.Log("Boat anchored. Movement disabled.");
+    }
+
+    public void ReleaseAnchor()
+    {
+        boatMovingActive = true;
+        Debug.Log("Boat released. Movement enabled.");
     }
 
     private Vector2 GetOriginFromManager()
